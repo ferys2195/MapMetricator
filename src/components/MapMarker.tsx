@@ -3,6 +3,9 @@ import { Marker, Popup, Tooltip, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useMarkerStore } from "@/stores/useMarkerStore";
+import { Button } from "./ui/button";
+import { latLngToUtm } from "@/lib/geoUtils";
+import { Trash2 } from "lucide-react";
 
 // Atur ikon marker agar muncul
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,7 +34,7 @@ function ClickHandler() {
 }
 
 export default function MapMarker() {
-  const markers = useMarkerStore((state) => state.markers);
+  const { markers, removeMarker } = useMarkerStore();
 
   return (
     <>
@@ -42,9 +45,30 @@ export default function MapMarker() {
             {String(++idx).padStart(3, "0")}
           </Tooltip>
           <Popup>
-            Marker #{idx + 1}
-            <br />
-            {position.lat.toFixed(4)}, {position.lng.toFixed(4)}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="">Marker - {String(idx).padStart(3, "0")}</label>
+              <ul className="list-item font-mono text-sm">
+                <li>
+                  LatLng : {position.lat.toFixed(4)}, {position.lng.toFixed(4)}
+                </li>
+                <li>
+                  UTM :
+                  {
+                    latLngToUtm({
+                      lat: position.lat,
+                      lng: position.lng,
+                    }).getAsString
+                  }
+                </li>
+              </ul>
+              <Button
+                variant={"destructive"}
+                size={"sm"}
+                onClick={() => removeMarker(position)}
+              >
+                <Trash2 /> Delete Marker
+              </Button>
+            </div>
           </Popup>
         </Marker>
       ))}
