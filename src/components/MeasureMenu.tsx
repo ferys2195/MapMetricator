@@ -1,4 +1,4 @@
-import { LandPlot, MapPinPlus, Ruler } from "lucide-react";
+import { LandPlot, MapPinPlus } from "lucide-react";
 import { ButtonGroup } from "./ButtonGroup";
 import {
   Dialog,
@@ -11,11 +11,12 @@ import {
 import PolygonInput from "./PolygonInput";
 import { Button } from "./ui/button";
 import { useMarkerStore } from "@/stores/useMarkerStore";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMap } from "react-leaflet";
 
 export default function MeasureMenu() {
   const { isAddingMarker, toggleAddingMarker } = useMarkerStore();
+  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const map = useMap();
 
   useEffect(() => {
@@ -34,6 +35,26 @@ export default function MeasureMenu() {
       setCursor("");
     }
   }, [isAddingMarker, map]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        useMarkerStore.getState().setAddingMarker(false);
+      }
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setCursorPos({ x: e.clientX + 10, y: e.clientY + 10 });
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, []);
   return (
     <ButtonGroup>
       <Dialog>
@@ -73,14 +94,24 @@ export default function MeasureMenu() {
       >
         <MapPinPlus size={16} />
       </Button>
-      <Button
-        variant={"ghost"}
-        size={"icon"}
-        title="Ukur"
-        className="rounded-none"
-      >
-        <Ruler size={16} />
-      </Button>
+      {isAddingMarker && (
+        <div
+          style={{
+            position: "fixed",
+            top: cursorPos.y,
+            left: cursorPos.x,
+            background: "rgba(0, 0, 0, 0.75)",
+            color: "white",
+            padding: "4px 8px",
+            borderRadius: "4px",
+            fontSize: "12px",
+            pointerEvents: "none",
+            zIndex: 9999,
+          }}
+        >
+          Tekan ESC untuk stop
+        </div>
+      )}
     </ButtonGroup>
   );
 }
