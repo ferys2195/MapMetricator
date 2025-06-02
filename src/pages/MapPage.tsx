@@ -7,8 +7,6 @@ import MapControlSlot from "@/components/MapControlSlot";
 import LayerSwitcher from "@/components/LayerSwitcher";
 import CustomZoomControl from "@/components/CustomZoomControl";
 import MeasureMenu from "@/components/MeasureMenu";
-import { ButtonGroup } from "@/components/ButtonGroup";
-import { LocateButton } from "@/components/LocateButton";
 import MouseCoordinates from "@/components/MouseCoordinates";
 
 export default function MapPage() {
@@ -43,9 +41,6 @@ export default function MapPage() {
           </MapControlSlot>
           <MapControlSlot position="top-right">
             <CustomZoomControl />
-            <ButtonGroup>
-              <LocateButton />
-            </ButtonGroup>
             <MeasureMenu />
           </MapControlSlot>
           <MapControlSlot position="bottom-right">
