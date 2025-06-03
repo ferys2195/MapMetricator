@@ -36,7 +36,11 @@ const LayerSwitcher = () => {
       </div>
 
       {/* TileLayer aktif */}
-      <TileLayer key={currentLayer} url={baseLayers[currentLayer]} />
+      <TileLayer
+        key={currentLayer}
+        maxNativeZoom={25}
+        url={baseLayers[currentLayer]}
+      />
     </>
   );
 };

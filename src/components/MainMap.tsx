@@ -25,7 +25,9 @@ export default function MainMap({ children }: { children?: React.ReactNode }) {
     return (
       <MapContainer
         center={defaultCenter}
-        zoom={20}
+        zoom={18}
+        minZoom={5}
+        maxZoom={25}
         zoomControl={false}
         style={{ height: "100%", width: "100%" }}
       >
@@ -46,7 +48,9 @@ export default function MainMap({ children }: { children?: React.ReactNode }) {
   return (
     <MapContainer
       center={center}
-      zoom={21}
+      zoom={18}
+      minZoom={5}
+      maxZoom={25}
       zoomControl={false}
       style={{ height: "100%", width: "100%" }}
     >
