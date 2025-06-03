@@ -1,7 +1,7 @@
 import { latLngToUtm } from "@/lib/geoUtils";
 import { Marker, Popup, Tooltip } from "react-leaflet";
 import { Button } from "./ui/button";
-import { Trash2 } from "lucide-react";
+import { FlagTriangleRight, Trash2 } from "lucide-react";
 import { useMarkerStore } from "@/stores/useMarkerStore";
 
 export default function MarkerItem({
@@ -19,7 +19,12 @@ export default function MarkerItem({
       </Tooltip>
       <Popup>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="">Marker - {title.padStart(3, "0")}</label>
+          <div className="flex w-full items-center gap-x-1.5 border-b py-1">
+            <FlagTriangleRight width={18} height={18} />{" "}
+            <label className="text-[16px] font-bold">
+              {title.padStart(3, "0")}
+            </label>
+          </div>
           <ul className="list-item font-mono text-sm">
             <li>
               LatLng : {marker.lat.toFixed(4)}, {marker.lng.toFixed(4)}
