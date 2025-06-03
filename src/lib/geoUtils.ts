@@ -28,7 +28,7 @@ export const latLngToUtm = ({ lat, lng }: LatLng): UtmResult => {
 
   const [easting, northing] = proj4("WGS84", utmString, [lng, lat]);
 
-  const getAsString = `${zoneNumber} ${hemisphere == "south" ? "S" : "N"} ${round(easting, 0)} ${round(northing)}`;
+  const getAsString = `${zoneNumber}${hemisphere == "south" ? "S" : "N"} ${round(easting, 0)} ${round(northing)}`;
 
   return {
     easting,
