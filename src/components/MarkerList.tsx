@@ -17,7 +17,7 @@ export default function MarkerList() {
   return (
     <>
       {markers.map((position, idx) => (
-        <MarkerItem marker={position} title={String(++idx)} />
+        <MarkerItem key={idx} marker={position} title={String(++idx)} />
       ))}
     </>
   );
