@@ -15,7 +15,9 @@ const PolygonShape = ({ coords }: PolygonShapeProps) => {
       pathOptions={{ color: "blue" }}
     >
       <Tooltip permanent direction="center">
-        {area.toFixed(0)} m²
+        <span className="text-xl font-semibold">
+          {Number(area.toFixed(0)).toLocaleString("id-ID")} m²
+        </span>
       </Tooltip>
     </Polygon>
   );
