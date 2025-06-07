@@ -8,16 +8,30 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "./ui/dialog";
-import PolygonInput from "./PolygonInput";
 import { Button } from "./ui/button";
 import { useMarkerStore } from "@/stores/useMarkerStore";
 import { useEffect, useState } from "react";
 import { useMap } from "react-leaflet";
+import { latLngToUtm } from "@/lib/geoUtils";
+import { Checkbox } from "./ui/checkbox";
+import { Label } from "@radix-ui/react-dropdown-menu";
+import { usePolygonStore } from "@/stores/polygonStore";
 
 export default function MeasureMenu() {
-  const { isAddingMarker, toggleAddingMarker } = useMarkerStore();
+  const { isAddingMarker, toggleAddingMarker, markers } = useMarkerStore();
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+  const [selectedMarker, setSelectedMarker] = useState<
+    { lat: number; lng: number }[]
+  >([]);
   const map = useMap();
+
+  const { addCoord } = usePolygonStore();
+
+  const addCoordinate = () => {
+    selectedMarker.map((marker) => {
+      addCoord([marker.lng, marker.lat]);
+    });
+  };
 
   useEffect(() => {
     const container = map.getContainer();
@@ -76,10 +90,54 @@ export default function MeasureMenu() {
           <DialogHeader>
             <DialogTitle>Ukur Bidang</DialogTitle>
             <DialogDescription>
-              Mengukur bidang berdasarkan koordinat. masukan minimal 3 koordinat
+              Mengukur bidang berdasarkan koordinat. pilih minimal 3 koordinat
             </DialogDescription>
           </DialogHeader>
-          <PolygonInput />
+          <ul className="mb-5">
+            {markers.map((marker, index) => (
+              <li key={index}>
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id={String(index)}
+                    key={index}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        // Tambahkan marker ke array jika checkbox dicentang
+                        setSelectedMarker((prev) => [
+                          ...prev,
+                          { lat: marker.lat, lng: marker.lng },
+                        ]);
+                      } else {
+                        // Hapus marker dari array jika checkbox tidak dicentang
+                        setSelectedMarker((prev) =>
+                          prev.filter(
+                            (m) =>
+                              !(m.lat === marker.lat && m.lng === marker.lng),
+                          ),
+                        );
+                      }
+                    }}
+                  />
+                  <Label>
+                    <code>
+                      {String(++index).padStart(3, "0")}{" "}
+                      {latLngToUtm(marker).getAsString}
+                    </code>
+                  </Label>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <Button
+            className="w-full"
+            disabled={selectedMarker.length < 3 ? true : false}
+            onClick={() => {
+              console.log(selectedMarker);
+              addCoordinate();
+            }}
+          >
+            Submit
+          </Button>
         </DialogContent>
       </Dialog>
       <Button
