@@ -13,20 +13,20 @@
 - **Add Waypoints** — Add new waypoints interactively by clicking on the map or via form input
 - **Polygon Measurement** — Create polygons from markers and calculate land area
 - **UTM Coordinate Input** — Input coordinates in UTM format like MapSource
-- **Export Polygon Measurement** *(coming soon)* — Export polygon to pdf
+- **Export Polygon Measurement** _(coming soon)_ — Export polygon to pdf
 
 ## 🗺️ Demo
 
-![GPX Tool Screenshot](./screenshot.png)
+![GPX Tool Screenshot](./screenshots/v1.png)
 
 ## 🛠️ Tech Stack
 
-| Technology | Purpose |
-|------------|---------|
-| React | Frontend framework |
-| Leaflet | Interactive mapping |
+| Technology    | Purpose                    |
+| ------------- | -------------------------- |
+| React         | Frontend framework         |
+| Leaflet       | Interactive mapping        |
 | React-Leaflet | React bindings for Leaflet |
-| (to be added) | UTM conversion library |
+| (to be added) | UTM conversion library     |
 
 ## 📦 Installation
 
@@ -42,3 +42,4 @@ npm install
 
 # Start development server
 npm run dev
+```
