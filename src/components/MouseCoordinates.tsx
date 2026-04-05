@@ -9,7 +9,7 @@ function MouseCoordinates() {
   const coordinate =
     mousePoint !== null &&
     latLngToUtm({ lat: mousePoint.lat, lng: mousePoint.lng });
-  const formattedCoordinates = coordinate.getAsString;
+  const formattedCoordinates = coordinate ? coordinate.getAsString : "";
 
   React.useEffect(
     function copyToClipboard() {
@@ -43,7 +43,7 @@ function MouseCoordinates() {
   });
 
   return (
-    <div className="rounded bg-white/50 px-2.5 py-1">
+    <div className="h-6 w-35 rounded bg-white/50 px-2.5 py-1">
       {formattedCoordinates}
     </div>
   );
