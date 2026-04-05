@@ -1,8 +1,8 @@
 import { useMap } from "react-leaflet";
 import { useEffect, useState } from "react";
 import { Minus, Plus } from "lucide-react";
-import { ButtonGroup } from "./ButtonGroup";
 import { Button } from "./ui/button";
+import { ButtonGroup } from "./ui/button-group";
 
 const CustomZoomControl = () => {
   const map = useMap();
@@ -36,22 +36,26 @@ const CustomZoomControl = () => {
   };
 
   return (
-    <ButtonGroup>
+    <ButtonGroup
+      orientation="vertical"
+      aria-label="Zoom controls"
+      className="h-fit"
+    >
       <Button
         onClick={zoomIn}
         disabled={zoom >= maxZoom}
-        variant={"ghost"}
+        variant={"secondary"}
         size={"icon"}
-        className={`rounded-none ${zoom >= maxZoom && "cursor-not-allowed opacity-50"}`}
+        className={`${zoom >= maxZoom && "cursor-not-allowed opacity-50"}`}
       >
         <Plus size={16} />
       </Button>
       <Button
         onClick={zoomOut}
         disabled={zoom <= minZoom}
-        variant={"ghost"}
         size={"icon"}
-        className={`rounded-none ${zoom <= minZoom && "cursor-not-allowed opacity-50"}`}
+        variant={"secondary"}
+        className={`${zoom <= minZoom && "cursor-not-allowed opacity-50"}`}
       >
         <Minus size={16} />
       </Button>

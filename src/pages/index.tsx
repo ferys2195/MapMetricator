@@ -1,18 +1,18 @@
-import MainMap from "../components/MainMap";
+import { MapView } from "../features/maps/components/MapView";
 import MapControlSlot from "@/components/MapControlSlot";
 import LayerSwitcher from "@/components/LayerSwitcher";
 import CustomZoomControl from "@/components/CustomZoomControl";
 import MeasureMenu from "@/components/MeasureMenu";
 import MouseCoordinates from "@/components/MouseCoordinates";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import SidebarMap from "@/components/Sidebar";
+import SidebarMap from "@/components/navigation/SidebarMap";
 
 export default function IndexPage() {
   return (
     <div className="relative flex h-screen w-screen">
       <div className="relative flex-1">
         <SidebarMap />
-        <MainMap>
+        <MapView>
           <MapControlSlot position="top-left">
             <SidebarTrigger />
           </MapControlSlot>
@@ -26,7 +26,7 @@ export default function IndexPage() {
               <MouseCoordinates />
             </div>
           </MapControlSlot>
-        </MainMap>
+        </MapView>
       </div>
     </div>
   );

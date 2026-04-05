@@ -1,5 +1,4 @@
 import { LandPlot, MapPinPlus } from "lucide-react";
-import { ButtonGroup } from "./ButtonGroup";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +15,7 @@ import { latLngToUtm } from "@/lib/geoUtils";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "@radix-ui/react-dropdown-menu";
 import { usePolygonStore } from "@/stores/polygonStore";
+import { ButtonGroup } from "./ui/button-group";
 
 export default function MeasureMenu() {
   const { isAddingMarker, toggleAddingMarker, markers } = useMarkerStore();
@@ -70,15 +70,14 @@ export default function MeasureMenu() {
     };
   }, []);
   return (
-    <ButtonGroup>
+    <ButtonGroup
+      orientation="vertical"
+      aria-label="Measure Menu"
+      className="h-fit"
+    >
       <Dialog>
         <DialogTrigger asChild>
-          <Button
-            variant={"ghost"}
-            size={"icon"}
-            title="Ukur Bidang"
-            className="rounded-none"
-          >
+          <Button size={"icon"} title="Ukur Bidang" variant={"secondary"}>
             <LandPlot size={16} />
           </Button>
         </DialogTrigger>
@@ -141,10 +140,9 @@ export default function MeasureMenu() {
         </DialogContent>
       </Dialog>
       <Button
-        variant={isAddingMarker ? "default" : "ghost"}
+        variant={isAddingMarker ? "default" : "secondary"}
         size="icon"
         title="Tambah Marker"
-        className="rounded-none"
         onClick={(e) => {
           e.stopPropagation();
           toggleAddingMarker();
