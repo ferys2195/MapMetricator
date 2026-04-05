@@ -1,31 +1,15 @@
+import { latLngToUtm } from "@/lib/geoUtils";
 import type { LatLng } from "leaflet";
 import React from "react";
 import { useMapEvents } from "react-leaflet";
 
-function round(number: number, precision: number = 0): number {
-  return (
-    Math.round(number * Math.pow(10, precision) + Number.EPSILON) /
-    Math.pow(10, precision)
-  );
-}
-
-function formatLatitude(latitude: number): string {
-  const direction = latitude > 0 ? "N" : "S";
-  return `${round(Math.abs(latitude), 6)}° ${direction}`;
-}
-
-function formatLongitude(longitude: number): string {
-  const direction = longitude > 0 ? "E" : "W";
-  return `${round(Math.abs(longitude), 6)}° ${direction}`;
-}
-
 function MouseCoordinates() {
   const [mousePoint, setMousePoint] = React.useState<LatLng | null>(null);
 
-  const formattedCoordinates =
-    mousePoint === null
-      ? ""
-      : `${formatLatitude(mousePoint.lat)}, ${formatLongitude(mousePoint.lng)}`;
+  const coordinate =
+    mousePoint !== null &&
+    latLngToUtm({ lat: mousePoint.lat, lng: mousePoint.lng });
+  const formattedCoordinates = coordinate ? coordinate.getAsString : "";
 
   React.useEffect(
     function copyToClipboard() {
@@ -58,10 +42,8 @@ function MouseCoordinates() {
     },
   });
 
-  if (formattedCoordinates.length === 0) return null;
-
   return (
-    <div className="leaflet-control-attribution leaflet-control">
+    <div className="h-6 w-35 rounded bg-white/50 px-2.5 py-1">
       {formattedCoordinates}
     </div>
   );

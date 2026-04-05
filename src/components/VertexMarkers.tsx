@@ -1,4 +1,4 @@
-import { CircleMarker, Tooltip } from "react-leaflet";
+import { CircleMarker } from "react-leaflet";
 
 interface VertexMarkersProps {
   coords: [number, number][];
@@ -13,11 +13,7 @@ const VertexMarkers = ({ coords }: VertexMarkersProps) => {
           center={[lat, lng]}
           radius={5}
           pathOptions={{ color: "green" }}
-        >
-          <Tooltip permanent direction="top">
-            P{idx + 1}
-          </Tooltip>
-        </CircleMarker>
+        ></CircleMarker>
       ))}
     </>
   );

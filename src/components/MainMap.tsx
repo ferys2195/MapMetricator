@@ -1,10 +1,11 @@
-import { MapContainer } from "react-leaflet";
+import { MapContainer, useMapEvents } from "react-leaflet";
 import MapFlyTo from "./MapFlyTo";
 import MapPolygon from "./MapPolygon";
 import { useGeolocationStore } from "@/stores/geolocationStore";
 import { useEffect } from "react";
-import MapMarker from "./MapMarker";
 import MapInstanceSaver from "./MapInstanceSaver";
+import MarkerList from "./MarkerList";
+import { useMarkerStore } from "@/stores/useMarkerStore";
 
 export default function MainMap({ children }: { children?: React.ReactNode }) {
   const { position, error, isLoading, getCurrentPosition } =
@@ -24,13 +25,16 @@ export default function MainMap({ children }: { children?: React.ReactNode }) {
     return (
       <MapContainer
         center={defaultCenter}
-        zoom={20}
+        zoom={18}
+        minZoom={5}
+        maxZoom={25}
         zoomControl={false}
         style={{ height: "100%", width: "100%" }}
       >
         {children}
+        <ClickHandler />
         <MapInstanceSaver />
-        <MapMarker />
+        <MarkerList />
         <MapPolygon />
         <MapFlyTo />
       </MapContainer>
@@ -44,14 +48,33 @@ export default function MainMap({ children }: { children?: React.ReactNode }) {
   return (
     <MapContainer
       center={center}
-      zoom={21}
+      zoom={18}
+      minZoom={5}
+      maxZoom={25}
       zoomControl={false}
       style={{ height: "100%", width: "100%" }}
     >
       {children}
-      <MapMarker />
+      <ClickHandler />
+      <MarkerList />
       <MapPolygon />
       <MapFlyTo />
     </MapContainer>
   );
+}
+
+function ClickHandler() {
+  const { isAddingMarker, addMarker } = useMarkerStore();
+
+  useMapEvents({
+    click(e) {
+      if (isAddingMarker) {
+        addMarker(e.latlng);
+        // add this if you want toggle off after 1 click:
+        // useMarkerStore.getState().setAddingMarker(false);
+      }
+    },
+  });
+
+  return null;
 }
