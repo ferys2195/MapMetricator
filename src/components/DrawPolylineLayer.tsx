@@ -1,10 +1,18 @@
 "use client";
 
-import { Polyline, useMapEvents, useMap, CircleMarker } from "react-leaflet";
+import {
+  Polyline,
+  useMapEvents,
+  useMap,
+  CircleMarker,
+  Popup,
+} from "react-leaflet";
 import { useState } from "react";
 import { useMapModeStore } from "@/stores/useMapModeStore";
 import { useMarkerStore } from "@/stores/useMarkerStore";
 import { getClosestPointOnSegment } from "@/lib/geometry.utils";
+import { Button } from "./ui/button";
+import { Trash2 } from "lucide-react";
 
 type LatLng = [number, number];
 
@@ -131,6 +139,33 @@ export default function DrawPolylineLayer() {
           dashArray={[10, 20]}
           color={snapPoint ? "#00b39b" : "#333"} // 🔥 visual snap
         />
+      )}
+      {path.length > 1 && (
+        <Polyline positions={path} color={snapPoint ? "#00b39b" : "#333"}>
+          <Popup>
+            <div className="flex flex-col gap-1.5">
+              <div className="border-b pb-1 font-bold">Polyline</div>
+
+              <div className="font-mono text-sm">
+                Total titik: {path.length}
+              </div>
+
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  setPath([]);
+                  setPreview(null);
+                  setSnapPoint(null);
+                  setLineSnapPoint(null);
+                  setMode("idle"); // 🔥 penting
+                }}
+              >
+                <Trash2 size={14} /> Delete Polyline
+              </Button>
+            </div>
+          </Popup>
+        </Polyline>
       )}
       {lineSnapPoint && mode === "polyline" && (
         <CircleMarker center={lineSnapPoint} radius={5} />
