@@ -43,7 +43,7 @@ function MouseCoordinates() {
   });
 
   return (
-    <div className="h-6 w-35 rounded bg-white/50 px-2.5 py-1">
+    <div className="bg-card/50 text-card-foreground h-6 w-35 rounded px-2.5 py-1">
       {formattedCoordinates}
     </div>
   );
