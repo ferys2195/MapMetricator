@@ -1,11 +1,11 @@
 import { MapContainer, useMapEvents } from "react-leaflet";
 import MapFlyTo from "../../../components/MapFlyTo";
-import MapPolygon from "../../../components/MapPolygon";
 import { useGeolocationStore } from "@/stores/geolocationStore";
 import { useEffect } from "react";
 import MapInstanceSaver from "../../../components/MapInstanceSaver";
 import MarkerList from "../../../components/MarkerList";
 import { useMarkerStore } from "@/stores/useMarkerStore";
+import { AreaMeasureView } from "@/features/measure";
 
 export function MapView({ children }: { children?: React.ReactNode }) {
   const { position, error, isLoading, getCurrentPosition } =
@@ -35,7 +35,7 @@ export function MapView({ children }: { children?: React.ReactNode }) {
         <ClickHandler />
         <MapInstanceSaver />
         <MarkerList />
-        <MapPolygon />
+        <AreaMeasureView />
         <MapFlyTo />
       </MapContainer>
     );
@@ -57,7 +57,7 @@ export function MapView({ children }: { children?: React.ReactNode }) {
       {children}
       <ClickHandler />
       <MarkerList />
-      <MapPolygon />
+      <AreaMeasureView />
       <MapFlyTo />
     </MapContainer>
   );
