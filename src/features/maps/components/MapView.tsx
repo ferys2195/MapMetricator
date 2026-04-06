@@ -2,7 +2,6 @@ import { MapContainer, useMapEvents } from "react-leaflet";
 import MapFlyTo from "../../../components/MapFlyTo";
 import { useGeolocationStore } from "@/stores/geolocationStore";
 import { useEffect } from "react";
-// import MapInstanceSaver from "../../../components/MapInstanceSaver";
 import MarkerList from "../../../components/MarkerList";
 import { useMarkerStore } from "@/stores/useMarkerStore";
 import { AreaMeasureView } from "@/features/measure";
@@ -38,7 +37,6 @@ export function MapView({ children }: { children?: React.ReactNode }) {
     >
       {children}
       <ClickHandler />
-      {/* <MapInstanceSaver /> */}
       <DrawPolylineLayer />
       <MarkerList />
       <AreaMeasureView />
