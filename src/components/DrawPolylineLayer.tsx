@@ -1,9 +1,10 @@
 "use client";
 
-import { Polyline, useMapEvents, useMap } from "react-leaflet";
+import { Polyline, useMapEvents, useMap, CircleMarker } from "react-leaflet";
 import { useState } from "react";
 import { useMapModeStore } from "@/stores/useMapModeStore";
 import { useMarkerStore } from "@/stores/useMarkerStore";
+import { getClosestPointOnSegment } from "@/lib/geometry.utils";
 
 type LatLng = [number, number];
 
@@ -11,10 +12,41 @@ export default function DrawPolylineLayer() {
   const [path, setPath] = useState<LatLng[]>([]);
   const [preview, setPreview] = useState<LatLng | null>(null);
   const [snapPoint, setSnapPoint] = useState<LatLng | null>(null);
+  const [lineSnapPoint, setLineSnapPoint] = useState<LatLng | null>(null);
 
   const { mode, setMode } = useMapModeStore();
   const { markers } = useMarkerStore();
   const map = useMap();
+
+  const findClosestPointOnPath = (point: LatLng) => {
+    if (path.length < 2) return null;
+
+    let closest: LatLng | null = null;
+    let minDist = Infinity;
+
+    for (let i = 0; i < path.length - 1; i++) {
+      const a = path[i];
+      const b = path[i + 1];
+
+      const projected = getClosestPointOnSegment(point, a, b);
+
+      const dist = map.distance(
+        { lat: point[0], lng: point[1] },
+        { lat: projected[0], lng: projected[1] },
+      );
+
+      if (dist < minDist) {
+        minDist = dist;
+        closest = projected;
+      }
+    }
+
+    if (minDist <= 20) {
+      return closest;
+    }
+
+    return null;
+  };
 
   const SNAP_DISTANCE = 20; // meter (bisa kamu tuning)
 
@@ -50,8 +82,7 @@ export default function DrawPolylineLayer() {
 
       const clicked: LatLng = [e.latlng.lat, e.latlng.lng];
 
-      // 🔥 kalau ada snap → pakai snap
-      const finalPoint = snapPoint ?? clicked;
+      const finalPoint = snapPoint ?? lineSnapPoint ?? clicked;
 
       setPath((prev) => [...prev, finalPoint]);
     },
@@ -62,13 +93,21 @@ export default function DrawPolylineLayer() {
 
       const current: LatLng = [e.latlng.lat, e.latlng.lng];
 
-      const nearest = findNearestMarker(current);
+      const markerSnap = findNearestMarker(current);
+      const lineSnap = findClosestPointOnPath(current);
 
-      if (nearest) {
-        setSnapPoint(nearest);
-        setPreview(nearest);
+      // 🔥 PRIORITAS: marker > line > free
+      if (markerSnap) {
+        setSnapPoint(markerSnap);
+        setLineSnapPoint(null);
+        setPreview(markerSnap);
+      } else if (lineSnap) {
+        setLineSnapPoint(lineSnap);
+        setSnapPoint(null);
+        setPreview(lineSnap);
       } else {
         setSnapPoint(null);
+        setLineSnapPoint(null);
         setPreview(current);
       }
     },
@@ -92,6 +131,9 @@ export default function DrawPolylineLayer() {
           dashArray={[10, 20]}
           color={snapPoint ? "#00b39b" : "#333"} // 🔥 visual snap
         />
+      )}
+      {lineSnapPoint && mode === "polyline" && (
+        <CircleMarker center={lineSnapPoint} radius={5} />
       )}
     </>
   );
