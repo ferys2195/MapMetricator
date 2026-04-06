@@ -1,6 +1,6 @@
 import { TooltipProvider } from "./components/ui/tooltip";
 import { useIsMobile } from "./hooks/use-mobile";
-import MapPage from "./pages/MapPage";
+import IndexPage from "./pages";
 
 function App() {
   const isMobile = useIsMobile();
@@ -16,7 +16,7 @@ function App() {
   }
   return (
     <TooltipProvider>
-      <MapPage />
+      <IndexPage />
     </TooltipProvider>
   );
 }

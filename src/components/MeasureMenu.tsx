@@ -1,5 +1,4 @@
-import { LandPlot, MapPinPlus } from "lucide-react";
-import { ButtonGroup } from "./ButtonGroup";
+import { LandPlot, MapPinPlus, Ruler } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,9 +15,12 @@ import { latLngToUtm } from "@/lib/geoUtils";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "@radix-ui/react-dropdown-menu";
 import { usePolygonStore } from "@/stores/polygonStore";
+import { ButtonGroup } from "./ui/button-group";
+import { useMapModeStore } from "@/stores/useMapModeStore";
 
 export default function MeasureMenu() {
-  const { isAddingMarker, toggleAddingMarker, markers } = useMarkerStore();
+  const { markers } = useMarkerStore();
+  const { mode, setMode } = useMapModeStore();
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [selectedMarker, setSelectedMarker] = useState<
     { lat: number; lng: number }[]
@@ -43,17 +45,17 @@ export default function MeasureMenu() {
       });
     }
 
-    if (isAddingMarker) {
+    if (mode === "marker") {
       setCursor("crosshair");
     } else {
       setCursor("");
     }
-  }, [isAddingMarker, map]);
+  }, [mode, map]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        useMarkerStore.getState().setAddingMarker(false);
+        useMapModeStore.getState().setMode("idle");
       }
     };
 
@@ -70,89 +72,101 @@ export default function MeasureMenu() {
     };
   }, []);
   return (
-    <ButtonGroup>
-      <Dialog>
-        <DialogTrigger asChild>
-          <Button
-            variant={"ghost"}
-            size={"icon"}
-            title="Ukur Bidang"
-            className="rounded-none"
-          >
-            <LandPlot size={16} />
-          </Button>
-        </DialogTrigger>
-        <DialogContent
-          className="z-[9999] sm:max-w-[425px]"
-          onInteractOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-        >
-          <DialogHeader>
-            <DialogTitle>Ukur Bidang</DialogTitle>
-            <DialogDescription>
-              Mengukur bidang berdasarkan koordinat. pilih minimal 3 koordinat
-            </DialogDescription>
-          </DialogHeader>
-          <ul className="mb-5">
-            {markers.map((marker, index) => (
-              <li key={index}>
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    id={String(index)}
-                    key={index}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        // Tambahkan marker ke array jika checkbox dicentang
-                        setSelectedMarker((prev) => [
-                          ...prev,
-                          { lat: marker.lat, lng: marker.lng },
-                        ]);
-                      } else {
-                        // Hapus marker dari array jika checkbox tidak dicentang
-                        setSelectedMarker((prev) =>
-                          prev.filter(
-                            (m) =>
-                              !(m.lat === marker.lat && m.lng === marker.lng),
-                          ),
-                        );
-                      }
-                    }}
-                  />
-                  <Label>
-                    <code>
-                      {String(++index).padStart(3, "0")}{" "}
-                      {latLngToUtm(marker).getAsString}
-                    </code>
-                  </Label>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <Button
-            className="w-full"
-            disabled={selectedMarker.length < 3 ? true : false}
-            onClick={() => {
-              console.log(selectedMarker);
-              addCoordinate();
-            }}
-          >
-            Submit
-          </Button>
-        </DialogContent>
-      </Dialog>
-      <Button
-        variant={isAddingMarker ? "default" : "ghost"}
-        size="icon"
-        title="Tambah Marker"
-        className="rounded-none"
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleAddingMarker();
-        }}
+    <>
+      <ButtonGroup
+        orientation="vertical"
+        aria-label="Measure Menu"
+        className="h-fit"
       >
-        <MapPinPlus size={16} />
-      </Button>
-      {isAddingMarker && (
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button size={"icon"} title="Ukur Bidang" variant={"secondary"}>
+              <LandPlot size={16} />
+            </Button>
+          </DialogTrigger>
+          <DialogContent
+            className="z-[9999] sm:max-w-[425px]"
+            onInteractOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+          >
+            <DialogHeader>
+              <DialogTitle>Ukur Bidang</DialogTitle>
+              <DialogDescription>
+                Mengukur bidang berdasarkan koordinat. pilih minimal 3 koordinat
+              </DialogDescription>
+            </DialogHeader>
+            <ul className="mb-5">
+              {markers.map((marker, index) => (
+                <li key={index}>
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id={String(index)}
+                      key={index}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          // Tambahkan marker ke array jika checkbox dicentang
+                          setSelectedMarker((prev) => [
+                            ...prev,
+                            { lat: marker.lat, lng: marker.lng },
+                          ]);
+                        } else {
+                          // Hapus marker dari array jika checkbox tidak dicentang
+                          setSelectedMarker((prev) =>
+                            prev.filter(
+                              (m) =>
+                                !(m.lat === marker.lat && m.lng === marker.lng),
+                            ),
+                          );
+                        }
+                      }}
+                    />
+                    <Label>
+                      <code>
+                        {String(++index).padStart(3, "0")}{" "}
+                        {latLngToUtm(marker).getAsString}
+                      </code>
+                    </Label>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <Button
+              className="w-full"
+              disabled={selectedMarker.length < 3 ? true : false}
+              onClick={() => {
+                console.log(selectedMarker);
+                addCoordinate();
+              }}
+            >
+              Submit
+            </Button>
+          </DialogContent>
+        </Dialog>
+        <Button
+          variant={mode === "marker" ? "default" : "secondary"}
+          size="icon"
+          title="Tambah Marker"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMode(mode === "marker" ? "idle" : "marker");
+          }}
+        >
+          <MapPinPlus size={16} />
+        </Button>
+        <Button
+          variant={mode === "polyline" ? "default" : "secondary"}
+          size="icon"
+          title="Draw Polyline"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMode(mode === "polyline" ? "idle" : "polyline");
+          }}
+        >
+          <Ruler />
+        </Button>
+      </ButtonGroup>
+
+      {mode !== "idle" && (
         <div
           style={{
             position: "fixed",
@@ -170,6 +184,6 @@ export default function MeasureMenu() {
           Tekan ESC untuk stop
         </div>
       )}
-    </ButtonGroup>
+    </>
   );
 }
