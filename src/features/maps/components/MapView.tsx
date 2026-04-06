@@ -2,15 +2,17 @@ import { MapContainer, useMapEvents } from "react-leaflet";
 import MapFlyTo from "../../../components/MapFlyTo";
 import { useGeolocationStore } from "@/stores/geolocationStore";
 import { useEffect } from "react";
-import MapInstanceSaver from "../../../components/MapInstanceSaver";
+// import MapInstanceSaver from "../../../components/MapInstanceSaver";
 import MarkerList from "../../../components/MarkerList";
 import { useMarkerStore } from "@/stores/useMarkerStore";
 import { AreaMeasureView } from "@/features/measure";
+import DrawPolylineLayer from "@/components/DrawPolylineLayer";
+import { useMapModeStore } from "@/stores/useMapModeStore";
+
+const defaultCenter: [number, number] = [-6.193096, 106.823504];
 
 export function MapView({ children }: { children?: React.ReactNode }) {
-  const { position, error, isLoading, getCurrentPosition } =
-    useGeolocationStore();
-  const defaultCenter = [-6.193096, 106.823504] as [number, number];
+  const { position, isLoading, getCurrentPosition } = useGeolocationStore();
 
   useEffect(() => {
     getCurrentPosition();
@@ -18,27 +20,6 @@ export function MapView({ children }: { children?: React.ReactNode }) {
 
   if (isLoading) {
     return <div>Loading your location...</div>;
-  }
-
-  if (error) {
-    console.error("Geolocation error:", error);
-    return (
-      <MapContainer
-        center={defaultCenter}
-        zoom={18}
-        minZoom={5}
-        maxZoom={25}
-        zoomControl={false}
-        style={{ height: "100%", width: "100%" }}
-      >
-        {children}
-        <ClickHandler />
-        <MapInstanceSaver />
-        <MarkerList />
-        <AreaMeasureView />
-        <MapFlyTo />
-      </MapContainer>
-    );
   }
 
   const center = position
@@ -52,10 +33,13 @@ export function MapView({ children }: { children?: React.ReactNode }) {
       minZoom={5}
       maxZoom={25}
       zoomControl={false}
+      doubleClickZoom={false}
       style={{ height: "100%", width: "100%" }}
     >
       {children}
       <ClickHandler />
+      {/* <MapInstanceSaver /> */}
+      <DrawPolylineLayer />
       <MarkerList />
       <AreaMeasureView />
       <MapFlyTo />
@@ -64,15 +48,14 @@ export function MapView({ children }: { children?: React.ReactNode }) {
 }
 
 function ClickHandler() {
-  const { isAddingMarker, addMarker } = useMarkerStore();
+  const { addMarker } = useMarkerStore();
+  const { mode } = useMapModeStore();
 
   useMapEvents({
     click(e) {
-      if (isAddingMarker) {
-        addMarker(e.latlng);
-        // add this if you want toggle off after 1 click:
-        // useMarkerStore.getState().setAddingMarker(false);
-      }
+      if (mode !== "marker") return;
+
+      addMarker(e.latlng);
     },
   });
 
