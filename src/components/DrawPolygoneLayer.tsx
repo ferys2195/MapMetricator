@@ -190,11 +190,7 @@ export default function DrawPolygonLayer() {
 
       {/* ================= VERTEX ================= */}
       {path.map((p, i) => (
-        <CircleMarker key={i} center={p} radius={4}>
-          <Tooltip permanent direction="top">
-            {(i + 1).toString().padStart(3, "0")}
-          </Tooltip>
-        </CircleMarker>
+        <CircleMarker key={i} center={p} radius={4} />
       ))}
     </>
   );
