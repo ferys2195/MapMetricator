@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type MapMode = "idle" | "marker" | "polyline";
+export type MapMode = "idle" | "marker" | "polyline" | "polygone";
 
 type State = {
   mode: MapMode;
