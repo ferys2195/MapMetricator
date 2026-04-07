@@ -6,8 +6,9 @@ import {
   useMap,
   CircleMarker,
   Popup,
+  Tooltip,
 } from "react-leaflet";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMapModeStore } from "@/stores/useMapModeStore";
 import { useMarkerStore } from "@/stores/useMarkerStore";
 import { getClosestPointOnSegment } from "@/lib/geometry.utils";
@@ -129,17 +130,40 @@ export default function DrawPolylineLayer() {
     },
   });
 
-  const displayPath = preview && path.length > 0 ? [...path, preview] : path;
+  const displayPath = useMemo(() => {
+    return mode === "polyline" && preview ? [...path, preview] : path;
+  }, [mode, preview, path]);
 
   return (
     <>
-      {displayPath.length > 1 && (
-        <Polyline
-          positions={displayPath}
-          dashArray={[10, 20]}
-          color={snapPoint ? "#00b39b" : "#333"} // 🔥 visual snap
-        />
-      )}
+      {displayPath.length > 1 &&
+        displayPath.map((point, i) => {
+          if (i === 0) return null;
+
+          const prev = displayPath[i - 1];
+
+          const dist = map.distance(
+            { lat: prev[0], lng: prev[1] },
+            { lat: point[0], lng: point[1] },
+          );
+
+          const mid: [number, number] = [
+            (prev[0] + point[0]) / 2,
+            (prev[1] + point[1]) / 2,
+          ];
+
+          return (
+            <Polyline
+              key={i}
+              positions={[prev, point]}
+              color={snapPoint ? "#00b39b" : "#333"}
+            >
+              <Tooltip permanent direction="center" position={mid}>
+                {dist.toFixed(2)} m
+              </Tooltip>
+            </Polyline>
+          );
+        })}
       {path.length > 1 && (
         <Polyline positions={path} color={snapPoint ? "#00b39b" : "#333"}>
           <Popup>
@@ -147,7 +171,7 @@ export default function DrawPolylineLayer() {
               <div className="border-b pb-1 font-bold">Polyline</div>
 
               <div className="font-mono text-sm">
-                Total titik: {path.length}
+                Total Waypoint: {path.length}
               </div>
 
               <Button

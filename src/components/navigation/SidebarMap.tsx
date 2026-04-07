@@ -142,7 +142,17 @@ const SidebarMap = () => {
           <p>
             Made with <span className="text-red-500">❤</span> by Fery Irawan
           </p>
-          <p> This project is open source, visit the repo.</p>
+          <p>
+            {" "}
+            This project is open source, visit {""}
+            <a
+              href="https://github.com/ferys2195/gpx-tool"
+              target="_blank"
+              className="underline"
+            >
+              the repo.
+            </a>
+          </p>
         </div>
       </SidebarFooter>
     </Sidebar>

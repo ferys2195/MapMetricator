@@ -7,6 +7,7 @@ import { useMarkerStore } from "@/stores/useMarkerStore";
 import { AreaMeasureView } from "@/features/measure";
 import DrawPolylineLayer from "@/components/DrawPolylineLayer";
 import { useMapModeStore } from "@/stores/useMapModeStore";
+import DrawPolygoneLayer from "@/components/DrawPolygoneLayer";
 
 const defaultCenter: [number, number] = [-6.193096, 106.823504];
 
@@ -38,6 +39,7 @@ export function MapView({ children }: { children?: React.ReactNode }) {
       {children}
       <ClickHandler />
       <DrawPolylineLayer />
+      <DrawPolygoneLayer />
       <MarkerList />
       <AreaMeasureView />
       <MapFlyTo />
