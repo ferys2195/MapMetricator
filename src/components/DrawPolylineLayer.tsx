@@ -8,7 +8,7 @@ import {
   Popup,
   Tooltip,
 } from "react-leaflet";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMapModeStore } from "@/stores/useMapModeStore";
 import { useMarkerStore } from "@/stores/useMarkerStore";
 import { getClosestPointOnSegment } from "@/lib/geometry.utils";
@@ -130,7 +130,9 @@ export default function DrawPolylineLayer() {
     },
   });
 
-  const displayPath = preview && path.length > 0 ? [...path, preview] : path;
+  const displayPath = useMemo(() => {
+    return mode === "polyline" && preview ? [...path, preview] : path;
+  }, [mode, preview, path]);
 
   return (
     <>
