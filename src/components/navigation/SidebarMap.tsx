@@ -1,6 +1,6 @@
 import GPXParser from "../UploadGPX";
 import { useMarkerStore } from "@/stores/useMarkerStore";
-import { Map, MapPinPlus, Plus } from "lucide-react";
+import { Map, MapPinPlus, Plus, Search } from "lucide-react";
 import { Button } from "../ui/button";
 import {
   Sidebar,
@@ -27,6 +27,11 @@ import L from "leaflet";
 import { useState } from "react";
 import { WaypointItem } from "@/features/waypoint";
 import { utmToLatLng } from "@/lib/geoUtils";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "../ui/input-group";
 
 const SidebarMap = () => {
   const { addMarker, markers } = useMarkerStore();
@@ -99,7 +104,7 @@ const SidebarMap = () => {
         </SidebarGroup>
         <SidebarGroup>
           <SidebarGroupLabel>Waypoints</SidebarGroupLabel>
-          <SidebarMenu>
+          <SidebarMenu className="space-y-2.5">
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
                 <Dialog>
@@ -126,6 +131,16 @@ const SidebarMap = () => {
                 </Dialog>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            {markers.length > 0 && (
+              <SidebarMenuItem>
+                <InputGroup className="max-w-xs">
+                  <InputGroupInput placeholder="Search markers..." />
+                  <InputGroupAddon>
+                    <Search />
+                  </InputGroupAddon>
+                </InputGroup>
+              </SidebarMenuItem>
+            )}
             <SidebarMenuItem>
               <div className="space-y-0.5">
                 {markers.map((marker, index) => (
