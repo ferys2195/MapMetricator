@@ -1,6 +1,6 @@
 import GPXParser from "../UploadGPX";
 import { useMarkerStore } from "@/stores/useMarkerStore";
-import { Map, MapPinPlus, Plus } from "lucide-react";
+import { Map, MapPinPlus, Plus, Search } from "lucide-react";
 import { Button } from "../ui/button";
 import {
   Sidebar,
@@ -25,12 +25,37 @@ import {
 import { Input } from "../ui/input";
 import L from "leaflet";
 import { useState } from "react";
-import { WaypointItem } from "@/features/waypoint";
+import { WaypointItem, type Waypoint } from "@/features/waypoint";
 import { utmToLatLng } from "@/lib/geoUtils";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "../ui/input-group";
 
 const SidebarMap = () => {
   const { addMarker, markers } = useMarkerStore();
   const [utmInput, setUtmInput] = useState("");
+  const [indexFilter, setIndexFilter] = useState("");
+
+  const markersToWaypoint: Waypoint[] = markers.map((marker) => ({
+    id: markers.indexOf(marker),
+    marker,
+  }));
+
+  const filteredMarkers: Waypoint[] = markersToWaypoint.filter(
+    (_, index: number) => {
+      // Gunakan index array
+      const query = indexFilter.trim();
+      if (!query) return true;
+
+      // Hitung displayId sama persis dengan cara di UI
+      const displayId = String(index + 1).padStart(3, "0"); // index mulai dari 0
+      // Atau jika ID asli sudah 0-based: const displayId = String(id + 1).padStart(3, "0");
+
+      return displayId.includes(query);
+    },
+  );
 
   const parseUtmString = (utmString: string) => {
     const parts = utmString.trim().split(/\s+/);
@@ -99,7 +124,7 @@ const SidebarMap = () => {
         </SidebarGroup>
         <SidebarGroup>
           <SidebarGroupLabel>Waypoints</SidebarGroupLabel>
-          <SidebarMenu>
+          <SidebarMenu className="space-y-2.5">
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
                 <Dialog>
@@ -126,10 +151,24 @@ const SidebarMap = () => {
                 </Dialog>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            {markersToWaypoint.length > 0 && (
+              <SidebarMenuItem>
+                <InputGroup className="max-w-xs">
+                  <InputGroupInput
+                    placeholder="Filter markers by index..."
+                    value={indexFilter}
+                    onChange={(e) => setIndexFilter(e.target.value)}
+                  />
+                  <InputGroupAddon>
+                    <Search />
+                  </InputGroupAddon>
+                </InputGroup>
+              </SidebarMenuItem>
+            )}
             <SidebarMenuItem>
               <div className="space-y-0.5">
-                {markers.map((marker, index) => (
-                  <WaypointItem key={index} id={index} marker={marker} />
+                {filteredMarkers.map(({ id, marker }: Waypoint) => (
+                  <WaypointItem key={id} id={id} marker={marker} />
                 ))}
               </div>
             </SidebarMenuItem>

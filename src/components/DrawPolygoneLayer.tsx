@@ -140,7 +140,7 @@ export default function DrawPolygonLayer() {
         const mid: LatLng = [(prev[0] + p[0]) / 2, (prev[1] + p[1]) / 2];
 
         return (
-          <Polyline key={i} positions={[prev, p]}>
+          <Polyline key={i} positions={[prev, p]} color="#fcba03">
             <Tooltip permanent position={mid}>
               {dist.toFixed(0)} m
             </Tooltip>
@@ -165,7 +165,7 @@ export default function DrawPolygonLayer() {
           ];
 
           return (
-            <Polyline positions={[last, first]} dashArray="4">
+            <Polyline positions={[last, first]} color="#fcba03" dashArray="4">
               <Tooltip permanent position={mid}>
                 {dist.toFixed(0)} m
               </Tooltip>
@@ -182,7 +182,7 @@ export default function DrawPolygonLayer() {
           {center && (
             <Tooltip position={center} permanent direction="center">
               {(area / 10000).toFixed(3)} ha <br />
-              {area.toFixed(0)} m²
+              {Number(area.toFixed(0)).toLocaleString("id-ID")} m²
             </Tooltip>
           )}
         </Polygon>
@@ -190,11 +190,7 @@ export default function DrawPolygonLayer() {
 
       {/* ================= VERTEX ================= */}
       {path.map((p, i) => (
-        <CircleMarker key={i} center={p} radius={4}>
-          <Tooltip permanent direction="top">
-            {(i + 1).toString().padStart(3, "0")}
-          </Tooltip>
-        </CircleMarker>
+        <CircleMarker color="#fcba03" key={i} center={p} radius={4} />
       ))}
     </>
   );

@@ -6,6 +6,10 @@
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react)](https://reactjs.org/)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.x-199900?logo=leaflet)](https://leafletjs.com/)
 
+## Note:
+
+### The code structure is not yet organized, and the current focus is on functionality.
+
 ## ✨ Features
 
 - **Open GPX Files** — Load and visualize GPX tracks and waypoints on an interactive map
@@ -17,7 +21,7 @@
 
 ## 🗺️ Demo
 
-![GPX Tool Screenshot](./screenshots/v1.png)
+![GPX Tool Screenshot](./screenshots/v1.1.0-beta.png)
 
 ## 🛠️ Tech Stack
 
