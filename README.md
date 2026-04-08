@@ -21,7 +21,7 @@
 
 ## 🗺️ Demo
 
-![GPX Tool Screenshot](./screenshots/v1.png)
+![GPX Tool Screenshot](./screenshots/v1.1.0-beta.png)
 
 ## 🛠️ Tech Stack
 
