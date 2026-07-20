@@ -2,10 +2,20 @@ import { TileLayer } from "react-leaflet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 
-const baseLayers: Record<string, string> = {
-  OpenStreetMap: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-  "Esri World Imagery":
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+type LayerConfig = {
+  url: string;
+  maxNativeZoom: number;
+};
+
+const baseLayers: Record<string, LayerConfig> = {
+  OpenStreetMap: {
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    maxNativeZoom: 19,
+  },
+  "Esri World Imagery": {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    maxNativeZoom: 17,
+  },
 };
 
 const LayerSwitcher = () => {
@@ -14,7 +24,6 @@ const LayerSwitcher = () => {
   return (
     <>
       {/* Tabs UI di pojok kanan bawah */}
-      {/*  className="absolute bottom-2.5 left-2.5 z-[1000]" */}
       <div>
         <Tabs
           defaultValue={currentLayer}
@@ -38,8 +47,9 @@ const LayerSwitcher = () => {
       {/* TileLayer aktif */}
       <TileLayer
         key={currentLayer}
-        maxNativeZoom={25}
-        url={baseLayers[currentLayer]}
+        maxNativeZoom={baseLayers[currentLayer].maxNativeZoom}
+        maxZoom={25}
+        url={baseLayers[currentLayer].url}
       />
     </>
   );
