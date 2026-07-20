@@ -5,7 +5,7 @@ import {
   CustomZoomControl,
   MouseCoordinates,
 } from "@/features/maps";
-import GeomanSetup from "@/components/GeomanSetup";
+import { GeomanSetup } from "@/features/drawing";
 import { SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import SidebarMap from "@/components/navigation/SidebarMap";
 
