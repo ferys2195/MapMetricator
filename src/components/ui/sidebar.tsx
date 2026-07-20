@@ -261,9 +261,9 @@ function SidebarTrigger({
     <Button
       data-sidebar="trigger"
       data-slot="sidebar-trigger"
-      variant="ghost"
-      size="icon-sm"
-      className={cn(className)}
+      variant="outline"
+      size="icon"
+      className={cn("h-[34px] w-[34px] bg-background shadow-[0_1px_5px_rgba(0,0,0,0.65)] border-none rounded-[4px]", className)}
       onClick={(event) => {
         onClick?.(event);
         toggleSidebar();

@@ -1,13 +1,9 @@
-import { parseGPX, type Waypoint } from "@/lib/gpxParser";
-import { useEffect, useState } from "react";
+import { parseGPX } from "@/lib/gpxParser";
 import { Input } from "@/components/ui/input";
-import { useMarkerStore } from "@/stores/useMarkerStore";
-import { LatLng } from "leaflet";
+import { useGeoStore } from "@/stores/useGeoStore";
 
 export default function UploadGPX() {
-  const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
-
-  const { addMarker } = useMarkerStore();
+  const { setWaypoints, setTracks, setRoutes } = useGeoStore();
 
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -16,20 +12,14 @@ export default function UploadGPX() {
     if (!file) return;
 
     try {
-      const result = await parseGPX(file);
-      setWaypoints(result);
+      const data = await parseGPX(file);
+      setWaypoints(data.waypoints);
+      setTracks(data.tracks);
+      setRoutes(data.routes);
     } catch (err) {
       console.error("Failed to parse GPX file:", err);
     }
   };
-
-  useEffect(() => {
-    if (waypoints.length > 0) {
-      waypoints.forEach((marker) => {
-        addMarker(new LatLng(marker.lat, marker.lon));
-      });
-    }
-  }, [waypoints, addMarker]);
 
   return (
     <div>

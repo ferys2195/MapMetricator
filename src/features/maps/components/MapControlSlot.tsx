@@ -4,10 +4,10 @@ interface MapControlSlotProps {
 }
 
 const positionClass = {
-  "top-left": "top-4 left-4",
-  "top-right": "top-4 right-4",
-  "bottom-left": "bottom-4 left-4",
-  "bottom-right": "bottom-4 right-4",
+  "top-left": "top-[10px] left-[10px]",
+  "top-right": "top-[10px] right-[10px]",
+  "bottom-left": "bottom-[10px] left-[10px]",
+  "bottom-right": "bottom-[20px] right-[10px]",
 };
 
 const MapControlSlot = ({ position, children }: MapControlSlotProps) => {

@@ -1,5 +1,5 @@
 import GPXParser from "../UploadGPX";
-import { useMarkerStore } from "@/stores/useMarkerStore";
+import { useGeoStore } from "@/stores/useGeoStore";
 import { Map, MapPinPlus, Plus, Search } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -12,7 +12,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
 } from "../ui/sidebar";
 import { Separator } from "../ui/separator";
 import {
@@ -25,37 +24,31 @@ import {
 import { Input } from "../ui/input";
 import L from "leaflet";
 import { useState } from "react";
-import { WaypointItem, type Waypoint } from "@/features/waypoint";
+import { WaypointItem } from "@/features/waypoint";
 import { utmToLatLng } from "@/lib/geoUtils";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from "../ui/input-group";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 const SidebarMap = () => {
-  const { addMarker, markers } = useMarkerStore();
+  const { waypoints, tracks, routes, addWaypoint } = useGeoStore();
   const [utmInput, setUtmInput] = useState("");
   const [indexFilter, setIndexFilter] = useState("");
 
-  const markersToWaypoint: Waypoint[] = markers.map((marker) => ({
-    id: markers.indexOf(marker),
-    marker,
+  const markersToWaypoint = waypoints.map((wpt, index) => ({
+    id: index,
+    marker: new L.LatLng(wpt.lat, wpt.lon),
   }));
 
-  const filteredMarkers: Waypoint[] = markersToWaypoint.filter(
-    (_, index: number) => {
-      // Gunakan index array
-      const query = indexFilter.trim();
-      if (!query) return true;
-
-      // Hitung displayId sama persis dengan cara di UI
-      const displayId = String(index + 1).padStart(3, "0"); // index mulai dari 0
-      // Atau jika ID asli sudah 0-based: const displayId = String(id + 1).padStart(3, "0");
-
-      return displayId.includes(query);
-    },
-  );
+  const filteredMarkers = markersToWaypoint.filter((_, index) => {
+    const query = indexFilter.trim();
+    if (!query) return true;
+    const displayId = String(index + 1).padStart(3, "0");
+    return displayId.includes(query);
+  });
 
   const parseUtmString = (utmString: string) => {
     const parts = utmString.trim().split(/\s+/);
@@ -85,14 +78,15 @@ const SidebarMap = () => {
     const parsed = parseUtmString(utmInput);
     if (parsed) {
       const latLng = utmToLatLng(parsed);
-      addMarker(new L.LatLng(latLng.lat, latLng.lng));
+      addWaypoint({ lat: latLng.lat, lon: latLng.lng, name: `Manual Wpt ${waypoints.length + 1}` });
       setUtmInput("");
     } else {
       alert("Invalid UTM format. Use format like: 49S 707172 9751522");
     }
   };
+
   return (
-    <Sidebar variant="sidebar" className="z-2000">
+    <Sidebar variant="inset" className="z-2000">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem className="flex items-center justify-between">
@@ -107,7 +101,6 @@ const SidebarMap = () => {
                 </div>
               </a>
             </SidebarMenuButton>
-            <SidebarTrigger />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -122,58 +115,104 @@ const SidebarMap = () => {
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Waypoints</SidebarGroupLabel>
-          <SidebarMenu className="space-y-2.5">
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full">
-                      <Plus /> Add Waypoint
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="z-500">
-                    <DialogHeader>Add new waypoint</DialogHeader>
-                    <Input
-                      type="text"
-                      placeholder="ex: 49S 707172 9751522"
-                      value={utmInput}
-                      onChange={(e) => setUtmInput(e.target.value)}
-                      className="mb-2"
-                    />
-                    <DialogFooter>
-                      <Button type="submit" onClick={handleAddWaypoint}>
-                        <MapPinPlus /> Add Waypoint
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            {markersToWaypoint.length > 0 && (
-              <SidebarMenuItem>
-                <InputGroup className="max-w-xs">
-                  <InputGroupInput
-                    placeholder="Filter markers by index..."
-                    value={indexFilter}
-                    onChange={(e) => setIndexFilter(e.target.value)}
-                  />
-                  <InputGroupAddon>
-                    <Search />
-                  </InputGroupAddon>
-                </InputGroup>
-              </SidebarMenuItem>
-            )}
-            <SidebarMenuItem>
-              <div className="space-y-0.5">
-                {filteredMarkers.map(({ id, marker }: Waypoint) => (
-                  <WaypointItem key={id} id={id} marker={marker} />
-                ))}
-              </div>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
+        
+        <div className="px-2 mt-4">
+          <Tabs defaultValue="waypoint" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsTrigger value="waypoint">Waypoint</TabsTrigger>
+              <TabsTrigger value="route">Route</TabsTrigger>
+              <TabsTrigger value="track">Track</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="waypoint">
+              <SidebarGroup className="p-0">
+                <SidebarMenu className="space-y-2.5">
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="w-full">
+                            <Plus /> Add Waypoint
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="z-500">
+                          <DialogHeader>Add new waypoint</DialogHeader>
+                          <Input
+                            type="text"
+                            placeholder="ex: 49S 707172 9751522"
+                            value={utmInput}
+                            onChange={(e) => setUtmInput(e.target.value)}
+                            className="mb-2"
+                          />
+                          <DialogFooter>
+                            <Button type="submit" onClick={handleAddWaypoint}>
+                              <MapPinPlus /> Add Waypoint
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  {markersToWaypoint.length > 0 && (
+                    <SidebarMenuItem>
+                      <InputGroup className="max-w-xs">
+                        <InputGroupInput
+                          placeholder="Filter markers by index..."
+                          value={indexFilter}
+                          onChange={(e) => setIndexFilter(e.target.value)}
+                        />
+                        <InputGroupAddon>
+                          <Search />
+                        </InputGroupAddon>
+                      </InputGroup>
+                    </SidebarMenuItem>
+                  )}
+                  <SidebarMenuItem>
+                    <div className="space-y-0.5 max-h-[40vh] overflow-y-auto">
+                      {filteredMarkers.map(({ id, marker }) => (
+                        <WaypointItem key={id} id={id} marker={marker} />
+                      ))}
+                    </div>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroup>
+            </TabsContent>
+            
+            <TabsContent value="route">
+              <SidebarGroup className="p-0">
+                <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                  {routes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No routes available</p>
+                  ) : (
+                    routes.map((route, i) => (
+                      <div key={route.id || i} className="rounded-md border px-2.5 py-2 text-sm">
+                        <div className="font-medium">{route.name}</div>
+                        <div className="text-xs text-muted-foreground">{route.points.length} points</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </SidebarGroup>
+            </TabsContent>
+            
+            <TabsContent value="track">
+              <SidebarGroup className="p-0">
+                <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                  {tracks.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No tracks available</p>
+                  ) : (
+                    tracks.map((track, i) => (
+                      <div key={track.id || i} className="rounded-md border px-2.5 py-2 text-sm">
+                        <div className="font-medium">{track.name}</div>
+                        <div className="text-xs text-muted-foreground">{track.segments.length} segments</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </SidebarGroup>
+            </TabsContent>
+          </Tabs>
+        </div>
       </SidebarContent>
       <Separator />
       <SidebarFooter className="text-sm">
