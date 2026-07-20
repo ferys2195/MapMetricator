@@ -1,13 +1,13 @@
 import { MapContainer, useMapEvents } from "react-leaflet";
-import MapFlyTo from "../../../components/MapFlyTo";
+import MapFlyTo from "./MapFlyTo";
 import { useGeolocationStore } from "@/stores/geolocationStore";
 import { useEffect } from "react";
-import MarkerList from "../../../components/MarkerList";
+import MarkerList from "./MarkerList";
 import { useMarkerStore } from "@/stores/useMarkerStore";
 import { AreaMeasureView } from "@/features/measure";
-import DrawPolylineLayer from "@/components/DrawPolylineLayer";
+import DrawPolylineLayer from "./DrawPolylineLayer";
 import { useMapModeStore } from "@/stores/useMapModeStore";
-import DrawPolygoneLayer from "@/components/DrawPolygoneLayer";
+import DrawPolygoneLayer from "./DrawPolygoneLayer";
 
 const defaultCenter: [number, number] = [-6.193096, 106.823504];
 
