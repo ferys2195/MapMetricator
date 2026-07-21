@@ -1,7 +1,6 @@
 import GPXParser from "../UploadGPX";
 import { useGeoStore } from "@/stores/useGeoStore";
-import { Map, MapPinPlus, Plus, Search } from "lucide-react";
-import { Button } from "../ui/button";
+import { Map, Search } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -14,18 +13,9 @@ import {
   SidebarMenuItem,
 } from "../ui/sidebar";
 import { Separator } from "../ui/separator";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTrigger,
-} from "../ui/dialog";
-import { Input } from "../ui/input";
 import L from "leaflet";
 import { useState } from "react";
-import { WaypointItem } from "@/features/waypoint";
-import { utmToLatLng } from "@/lib/geoUtils";
+import { WaypointItem, AddWaypointDialog } from "@/features/waypoint";
 import {
   InputGroup,
   InputGroupAddon,
@@ -34,8 +24,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 const SidebarMap = () => {
-  const { waypoints, tracks, routes, addWaypoint } = useGeoStore();
-  const [utmInput, setUtmInput] = useState("");
+  const { waypoints, tracks, routes } = useGeoStore();
   const [indexFilter, setIndexFilter] = useState("");
   const [routeFilter, setRouteFilter] = useState("");
   const [trackFilter, setTrackFilter] = useState("");
@@ -63,53 +52,6 @@ const SidebarMap = () => {
     if (!query) return true;
     return track.name?.toLowerCase().includes(query) || false;
   });
-
-  const parseUtmString = (utmString: string) => {
-    const parts = utmString.trim().split(/\s+/);
-    if (parts.length !== 3) return null;
-
-    const zoneHemisphere = parts[0];
-    const easting = parseFloat(parts[1]);
-    const northing = parseFloat(parts[2]);
-
-    if (isNaN(easting) || isNaN(northing)) return null;
-
-    const zoneNumber = parseInt(zoneHemisphere.slice(0, -1));
-    const band = zoneHemisphere.slice(-1).toUpperCase();
-    
-    let hemisphere: "north" | "south" = "north";
-    if (band === 'S') {
-      hemisphere = "south";
-    } else if (band === 'N') {
-      hemisphere = "north";
-    } else {
-      // Garmin/MGRS Latitude Bands: C to M are South, N to X are North
-      if (band >= 'C' && band <= 'M') {
-        hemisphere = "south";
-      } else {
-        hemisphere = "north";
-      }
-    }
-
-    return {
-      easting,
-      northing,
-      zoneNumber,
-      hemisphere,
-      getAsString: utmString,
-    };
-  };
-
-  const handleAddWaypoint = () => {
-    const parsed = parseUtmString(utmInput);
-    if (parsed) {
-      const latLng = utmToLatLng(parsed);
-      addWaypoint({ lat: latLng.lat, lon: latLng.lng, name: `Manual Wpt ${waypoints.length + 1}` });
-      setUtmInput("");
-    } else {
-      alert("Invalid UTM format. Use format like: 49S 707172 9751522");
-    }
-  };
 
   return (
     <Sidebar variant="inset" className="z-2000">
@@ -155,28 +97,7 @@ const SidebarMap = () => {
                 <SidebarMenu className="space-y-2.5 h-full flex flex-col">
                   <SidebarMenuItem className="shrink-0">
                     <SidebarMenuButton asChild>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Plus /> Add Waypoint
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="z-500">
-                          <DialogHeader>Add new waypoint</DialogHeader>
-                          <Input
-                            type="text"
-                            placeholder="ex: 49S 707172 9751522"
-                            value={utmInput}
-                            onChange={(e) => setUtmInput(e.target.value)}
-                            className="mb-2"
-                          />
-                          <DialogFooter>
-                            <Button type="submit" onClick={handleAddWaypoint}>
-                              <MapPinPlus /> Add Waypoint
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                      <AddWaypointDialog />
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   {markersToWaypoint.length > 0 && (
