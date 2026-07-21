@@ -4,6 +4,7 @@ import "./index.css";
 import "leaflet/dist/leaflet.css";
 import App from "./App.tsx";
 import { SidebarProvider } from "./components/ui/sidebar.tsx";
+import { Toaster } from "./components/ui/sonner.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -11,6 +12,7 @@ createRoot(document.getElementById("root")!).render(
       <main className="flex-1">
         <App />
       </main>
+      <Toaster />
     </SidebarProvider>
   </StrictMode>,
 );

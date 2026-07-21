@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useGeoStore } from "@/stores/useGeoStore";
 import { Marker, Polyline, Tooltip, Popup, LayerGroup } from "react-leaflet";
+import { Copy } from "lucide-react";
+import { toast } from "sonner";
+import { latLngToUtm, getLatitudeBand } from "@/lib/geoUtils";
 import * as turf from "@turf/turf";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -58,13 +61,66 @@ export default function GeoDataLayer() {
   const { waypoints, routes, tracks } = useGeoStore();
   const [selectedItem, setSelectedItem] = useState<{ id: string; type: 'track' | 'route'; segmentIdx?: number } | null>(null);
 
+  const handleCopy = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} berhasil disalin!`);
+  };
+
   return (
     <>
-      {waypoints.map((wpt, idx) => (
-        <Marker key={`wpt-${idx}`} position={[wpt.lat, wpt.lon]}>
-          <Tooltip direction="top">{wpt.name}</Tooltip>
-        </Marker>
-      ))}
+      {waypoints.map((wpt, idx) => {
+        const utm = latLngToUtm({ lat: wpt.lat, lng: wpt.lon });
+        const band = getLatitudeBand(wpt.lat);
+        const garminUtm = `${utm.zoneNumber}${band} ${Math.round(utm.easting)} ${Math.round(utm.northing)}`;
+
+        return (
+          <Marker key={`wpt-${idx}`} position={[wpt.lat, wpt.lon]}>
+            <Tooltip direction="top">{wpt.name}</Tooltip>
+            <Popup>
+              <div className="font-sans text-sm min-w-[220px]">
+                <div className="font-bold mb-2 pb-1 border-b">{wpt.name}</div>
+                <div className="flex flex-col gap-3">
+                  
+                  {/* Lat/Lon section */}
+                  <div>
+                    <span className="text-xs text-gray-500 font-semibold">Lat, Lon:</span>
+                    <div className="flex items-center justify-between bg-slate-50 p-1.5 rounded border border-slate-200 mt-1">
+                      <span className="font-mono text-[11px] text-slate-700 select-all">
+                        {wpt.lat.toFixed(5)}, {wpt.lon.toFixed(5)}
+                      </span>
+                      <button 
+                        onClick={() => handleCopy(`${wpt.lat.toFixed(5)}, ${wpt.lon.toFixed(5)}`, 'Koordinat Lat/Lon')}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-500 transition-colors cursor-pointer"
+                        title="Copy Lat/Lon"
+                      >
+                        <Copy size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* UTM section */}
+                  <div>
+                    <span className="text-xs text-gray-500 font-semibold">UTM (Garmin / Standar):</span>
+                    <div className="flex items-center justify-between bg-slate-50 p-1.5 rounded border border-slate-200 mt-1">
+                      <span className="font-mono text-[11px] text-slate-700 select-all" title={`UTM Standar: ${utm.getAsString}`}>
+                        {garminUtm}
+                      </span>
+                      <button 
+                        onClick={() => handleCopy(garminUtm, 'Koordinat UTM')}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-500 transition-colors cursor-pointer"
+                        title="Copy UTM"
+                      >
+                        <Copy size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
 
       {routes.map((route, idx) => {
         const isSelected = selectedItem?.type === 'route' && selectedItem.id === route.id;

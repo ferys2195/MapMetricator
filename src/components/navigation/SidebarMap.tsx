@@ -61,9 +61,21 @@ const SidebarMap = () => {
     if (isNaN(easting) || isNaN(northing)) return null;
 
     const zoneNumber = parseInt(zoneHemisphere.slice(0, -1));
-    const hemisphere = (
-      zoneHemisphere.slice(-1).toLowerCase() === "s" ? "south" : "north"
-    ) as "north" | "south";
+    const band = zoneHemisphere.slice(-1).toUpperCase();
+    
+    let hemisphere: "north" | "south" = "north";
+    if (band === 'S') {
+      hemisphere = "south";
+    } else if (band === 'N') {
+      hemisphere = "north";
+    } else {
+      // Garmin/MGRS Latitude Bands: C to M are South, N to X are North
+      if (band >= 'C' && band <= 'M') {
+        hemisphere = "south";
+      } else {
+        hemisphere = "north";
+      }
+    }
 
     return {
       easting,

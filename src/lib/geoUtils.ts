@@ -21,6 +21,13 @@ const getUtmProjString = (
   return `+proj=utm +zone=${zone} +datum=WGS84 +units=m +no_defs ${hemisphere === "south" ? "+south" : ""}`;
 };
 
+export const getLatitudeBand = (lat: number): string => {
+  if (lat < -80 || lat >= 84) return "";
+  const bands = "CDEFGHJKLMNPQRSTUVWX";
+  const index = Math.floor((lat + 80) / 8);
+  return bands.charAt(index);
+};
+
 export const latLngToUtm = ({ lat, lng }: LatLng): UtmResult => {
   const zoneNumber = getUtmZoneFromLongitude(lng);
   const hemisphere: "north" | "south" = lat >= 0 ? "north" : "south";
