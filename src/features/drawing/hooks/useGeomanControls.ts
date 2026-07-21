@@ -8,14 +8,20 @@ export const useGeomanControls = () => {
   useEffect(() => {
     map.pm.addControls({
       position: "topleft",
+      oneBlock: true,
       drawCircleMarker: false,
       drawCircle: false,
       drawText: false,
-      editControls: true,
       drawMarker: true,
       drawPolyline: true,
       drawRectangle: true,
       drawPolygon: true,
+      editControls: true,
+      editMode: true,
+      dragMode: false,
+      cutPolygon: false,
+      removalMode: false,
+      rotateMode: false,
     });
 
     return () => {
