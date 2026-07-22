@@ -2,12 +2,12 @@ import { useEffect } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
 import { useGeoStore } from "@/stores/useGeoStore";
-import { latLngToUtm } from "@/lib/geoUtils";
+import { latLngToUtm, getLatitudeBand } from "@/lib/geoUtils";
 import { renderLayerMeasurements, updateTooltip } from "./useGeomanMeasurements";
 
 export const useGeomanEvents = () => {
   const map = useMap();
-  const { addWaypoint } = useGeoStore();
+  const { openWaypointDialog } = useGeoStore();
 
   useEffect(() => {
     const handleCreate = (e: any) => {
@@ -16,13 +16,14 @@ export const useGeomanEvents = () => {
       if (shape === "Marker") {
         const latlng = (layer as L.Marker).getLatLng();
         const utm = latLngToUtm(latlng);
-        const name = prompt(`Enter waypoint name:\nUTM: ${utm.getAsString}`, "New Waypoint");
-        if (name) {
-          addWaypoint({ lat: latlng.lat, lon: latlng.lng, name });
-          layer.bindTooltip(name, { permanent: true, direction: "top" }).openTooltip();
-        } else {
-          map.removeLayer(layer);
-        }
+        const band = getLatitudeBand(latlng.lat);
+        const garminUtm = `${utm.zoneNumber}${band} ${Math.round(utm.easting)} ${Math.round(utm.northing)}`;
+        
+        // Remove the geoman drawn layer since it will be rendered by GeoDataLayer once added
+        map.removeLayer(layer);
+        
+        // Open the dialog with the pre-filled coordinates
+        openWaypointDialog(garminUtm);
       } else {
         renderLayerMeasurements(map, layer);
         updateTooltip(layer);
@@ -48,5 +49,5 @@ export const useGeomanEvents = () => {
     return () => {
       map.off("pm:create", handleCreate);
     };
-  }, [map, addWaypoint]);
+  }, [map, openWaypointDialog]);
 };

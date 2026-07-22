@@ -17,6 +17,11 @@ interface GeoStore {
   setRoutes: (routes: Route[]) => void;
   addRoute: (route: Route) => void;
   removeRoute: (id: string) => void;
+
+  isWaypointDialogOpen: boolean;
+  waypointDialogUtm: string;
+  openWaypointDialog: (utm?: string) => void;
+  closeWaypointDialog: () => void;
 }
 
 export const useGeoStore = create<GeoStore>((set) => ({
@@ -41,4 +46,9 @@ export const useGeoStore = create<GeoStore>((set) => ({
   removeRoute: (id) => set((state) => ({
     routes: state.routes.filter(r => r.id !== id)
   })),
+
+  isWaypointDialogOpen: false,
+  waypointDialogUtm: "",
+  openWaypointDialog: (utm = "") => set({ isWaypointDialogOpen: true, waypointDialogUtm: utm }),
+  closeWaypointDialog: () => set({ isWaypointDialogOpen: false, waypointDialogUtm: "" }),
 }));

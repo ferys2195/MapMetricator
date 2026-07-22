@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGeoStore } from "@/stores/useGeoStore";
 import { utmToLatLng } from "@/lib/geoUtils";
 import {
@@ -6,17 +6,30 @@ import {
   DialogContent,
   DialogFooter,
   DialogHeader,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MapPinPlus, Plus } from "lucide-react";
+import { MapPinPlus } from "lucide-react";
 
 export const AddWaypointDialog = () => {
-  const { waypoints, addWaypoint } = useGeoStore();
+  const { waypoints, addWaypoint, isWaypointDialogOpen, closeWaypointDialog, waypointDialogUtm, openWaypointDialog } = useGeoStore();
   const [utmInput, setUtmInput] = useState("");
   const [nameInput, setNameInput] = useState("");
-  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (isWaypointDialogOpen) {
+      setUtmInput(waypointDialogUtm);
+      setNameInput("");
+    }
+  }, [isWaypointDialogOpen, waypointDialogUtm]);
+
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      openWaypointDialog();
+    } else {
+      closeWaypointDialog();
+    }
+  };
 
   const parseUtmString = (utmString: string) => {
     const parts = utmString.trim().split(/\s+/);
@@ -61,19 +74,14 @@ export const AddWaypointDialog = () => {
       addWaypoint({ lat: latLng.lat, lon: latLng.lng, name: wptName });
       setUtmInput("");
       setNameInput("");
-      setOpen(false); // Close dialog on success
+      closeWaypointDialog(); // Close dialog on success
     } else {
       alert("Invalid UTM format. Use format like: 49S 707172 9751522");
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="w-full">
-          <Plus className="mr-2 h-4 w-4" /> Add Waypoint
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isWaypointDialogOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="z-[500]">
         <DialogHeader>Add new waypoint</DialogHeader>
         <div className="space-y-4 py-2">

@@ -95,11 +95,6 @@ const SidebarMap = () => {
             <TabsContent value="waypoint" className="flex-1 overflow-hidden outline-none">
               <SidebarGroup className="p-0 h-full flex flex-col">
                 <SidebarMenu className="space-y-2.5 h-full flex flex-col">
-                  <SidebarMenuItem className="shrink-0">
-                    <SidebarMenuButton asChild>
-                      <AddWaypointDialog />
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
                   {markersToWaypoint.length > 0 && (
                     <SidebarMenuItem className="shrink-0">
                       <InputGroup className="max-w-xs">
@@ -212,6 +207,7 @@ const SidebarMap = () => {
           </p>
         </div>
       </SidebarFooter>
+      <AddWaypointDialog />
     </Sidebar>
   );
 };
