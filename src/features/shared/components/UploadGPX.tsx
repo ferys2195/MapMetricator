@@ -1,5 +1,5 @@
 import { parseGPX } from "@/lib/gpxParser";
-import { Input } from "./ui/input";
+import { Input } from "@/components/ui/input";
 import { useGeoStore } from "@/stores/useGeoStore";
 
 export default function UploadGPX() {

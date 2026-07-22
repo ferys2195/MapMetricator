@@ -1,13 +1,8 @@
-import { MapContainer, useMapEvents } from "react-leaflet";
-import MapFlyTo from "../../../components/MapFlyTo";
+import { MapContainer } from "react-leaflet";
+import MapFlyTo from "./MapFlyTo";
 import { useGeolocationStore } from "@/stores/geolocationStore";
 import { useEffect } from "react";
-import MarkerList from "../../../components/MarkerList";
-import { useMarkerStore } from "@/stores/useMarkerStore";
-import { AreaMeasureView } from "@/features/measure";
-import DrawPolylineLayer from "@/components/DrawPolylineLayer";
-import { useMapModeStore } from "@/stores/useMapModeStore";
-import DrawPolygoneLayer from "@/components/DrawPolygoneLayer";
+import GeoDataLayer from "./GeoDataLayer";
 
 const defaultCenter: [number, number] = [-6.193096, 106.823504];
 
@@ -37,27 +32,10 @@ export function MapView({ children }: { children?: React.ReactNode }) {
       style={{ height: "100%", width: "100%" }}
     >
       {children}
-      <ClickHandler />
-      <DrawPolylineLayer />
-      <DrawPolygoneLayer />
-      <MarkerList />
-      <AreaMeasureView />
+      <GeoDataLayer />
       <MapFlyTo />
     </MapContainer>
   );
 }
 
-function ClickHandler() {
-  const { addMarker } = useMarkerStore();
-  const { mode } = useMapModeStore();
 
-  useMapEvents({
-    click(e) {
-      if (mode !== "marker") return;
-
-      addMarker(e.latlng);
-    },
-  });
-
-  return null;
-}
