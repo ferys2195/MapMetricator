@@ -326,8 +326,8 @@ export const renderUTMMapToCanvas = async (
   for (let e = startGridEasting; e <= maxEasting; e += gridStep) {
     const x = utmToCanvasX(e);
     if (x >= mapFrameLeft + 10 && x <= mapFrameRight - 10) {
-      // Easting format with UTM Zone Number prefix (e.g. "49 708450")
-      const eastingStr = `${zoneNumber} ${Math.round(e)}`;
+      // Easting format with UTM Zone Number & Band prefix (e.g. "49 M 708450")
+      const eastingStr = `${zoneNumber} ${bandLetter} ${Math.round(e)}`;
 
       // Top Horizontal Tick Label
       ctx.textAlign = "center";
