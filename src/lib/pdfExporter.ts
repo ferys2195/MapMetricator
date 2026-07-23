@@ -127,7 +127,7 @@ export const renderUTMMapToCanvas = async (
     if (pt.northing > maxNorthing) maxNorthing = pt.northing;
   });
 
-  const centerPt = allPoints[0];
+  const centerPt = allPoints[Math.floor(allPoints.length / 2)] || allPoints[0];
   const zoneNumber = centerPt.zoneNumber;
   const bandLetter = centerPt.band;
   const hemisphere = centerPt.lat >= 0 ? "north" : "south";
@@ -320,15 +320,16 @@ export const renderUTMMapToCanvas = async (
 
   // Draw Border Coordinate Ticks & Labels (on white page margins)
   ctx.fillStyle = "#000000";
-  ctx.font = "bold 26px sans-serif";
+  ctx.font = "bold 24px sans-serif";
 
-  // Easting Grid Labels (Top & Bottom Borders)
+  // Easting Grid Labels (Top & Bottom Horizontal Borders)
   for (let e = startGridEasting; e <= maxEasting; e += gridStep) {
     const x = utmToCanvasX(e);
-    if (x >= mapFrameLeft + 40 && x <= mapFrameRight - 40) {
+    if (x >= mapFrameLeft + 10 && x <= mapFrameRight - 10) {
+      // Easting format with UTM Zone Number prefix (e.g. "49 708450")
       const eastingStr = `${zoneNumber} ${Math.round(e)}`;
 
-      // Top Tick Label
+      // Top Horizontal Tick Label
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
       ctx.fillText(eastingStr, x, mapFrameTop - 12);
@@ -339,7 +340,7 @@ export const renderUTMMapToCanvas = async (
       ctx.lineTo(x, mapFrameTop - 8);
       ctx.stroke();
 
-      // Bottom Tick Label
+      // Bottom Horizontal Tick Label
       ctx.textBaseline = "top";
       ctx.fillText(eastingStr, x, mapFrameBottom + 12);
 
@@ -351,10 +352,11 @@ export const renderUTMMapToCanvas = async (
     }
   }
 
-  // Northing Grid Labels (Left & Right Borders - Vertical Text)
+  // Northing Grid Labels (Left & Right Vertical Borders)
   for (let n = startGridNorthing; n <= maxNorthing; n += gridStep) {
     const y = utmToCanvasY(n);
-    if (y >= mapFrameTop + 40 && y <= mapFrameBottom - 40) {
+    if (y >= mapFrameTop + 10 && y <= mapFrameBottom - 10) {
+      // Northing format with UTM Zone & Band (e.g. "49 M 9751100")
       const northingStr = `${zoneNumber} ${bandLetter} ${Math.round(n)}`;
 
       // Left Border Label (Rotated 90 degrees CCW)
