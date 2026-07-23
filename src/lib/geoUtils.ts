@@ -10,11 +10,11 @@ type UtmResult = {
   getAsString: string;
 };
 
-const getUtmZoneFromLongitude = (longitude: number): number => {
+export const getUtmZoneFromLongitude = (longitude: number): number => {
   return Math.floor((longitude + 180) / 6) + 1;
 };
 
-const getUtmProjString = (
+export const getUtmProjString = (
   zone: number,
   hemisphere: "north" | "south",
 ): string => {
@@ -46,6 +46,16 @@ export const latLngToUtm = ({ lat, lng }: LatLng): UtmResult => {
   };
 };
 
+export const latLngToUtmWithZone = (
+  { lat, lng }: LatLng,
+  zoneNumber: number,
+  hemisphere: "north" | "south"
+): { easting: number; northing: number } => {
+  const utmString = getUtmProjString(zoneNumber, hemisphere);
+  const [easting, northing] = proj4("WGS84", utmString, [lng, lat]);
+  return { easting, northing };
+};
+
 export const utmToLatLng = ({
   easting,
   northing,
@@ -55,5 +65,15 @@ export const utmToLatLng = ({
   const utmString = getUtmProjString(zoneNumber, hemisphere);
   const [lng, lat] = proj4(utmString, "WGS84", [easting, northing]);
 
+  return { lat, lng };
+};
+
+export const utmToLatLngWithZone = (
+  { easting, northing }: { easting: number; northing: number },
+  zoneNumber: number,
+  hemisphere: "north" | "south"
+): LatLng => {
+  const utmString = getUtmProjString(zoneNumber, hemisphere);
+  const [lng, lat] = proj4(utmString, "WGS84", [easting, northing]);
   return { lat, lng };
 };
