@@ -1,12 +1,15 @@
 import jsPDF from "jspdf";
-import { latLngToUtm, getLatitudeBand } from "./geoUtils";
+import { latLngToUtm, utmToLatLng, getLatitudeBand } from "./geoUtils";
 import type { Route, Track } from "./gpxParser";
+
+export type BaseMapType = "global" | "esri" | "osm";
 
 export interface PDFExportOptions {
   title?: string;
   paperSize?: "a4";
   orientation?: "portrait";
   customDate?: string;
+  baseMap?: BaseMapType;
 }
 
 interface UtmPoint {
@@ -36,7 +39,7 @@ const calculateNiceGridStep = (range: number, targetTicks = 5): number => {
 
 const calculateScaleBarLength = (mapWidthMeters: number): { length: number; unit: string; divisions: number } => {
   const targetScaleWidth = mapWidthMeters * 0.25; // Scale bar takes ~25% of map width
-  let length = calculateNiceGridStep(targetScaleWidth, 1);
+  const length = calculateNiceGridStep(targetScaleWidth, 1);
   
   if (length >= 1000) {
     return { length, unit: "km", divisions: 4 };
@@ -44,10 +47,40 @@ const calculateScaleBarLength = (mapWidthMeters: number): { length: number; unit
   return { length, unit: "m", divisions: 4 };
 };
 
-export const renderUTMMapToCanvas = (
+// Web Mercator Tile Helpers
+const lon2tile = (lon: number, zoom: number) => ((lon + 180) / 360) * Math.pow(2, zoom);
+const lat2tile = (lat: number, zoom: number) => {
+  const latRad = (lat * Math.PI) / 180;
+  return ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * Math.pow(2, zoom);
+};
+const tile2lon = (x: number, z: number) => (x / Math.pow(2, z)) * 360 - 180;
+const tile2lat = (y: number, z: number) => {
+  const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, z);
+  return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+};
+
+const loadTileImage = (url: string): Promise<HTMLImageElement | null> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    const timer = setTimeout(() => resolve(null), 4000); // 4s timeout
+    img.onload = () => {
+      clearTimeout(timer);
+      resolve(img);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      resolve(null);
+    };
+    img.src = url;
+  });
+};
+
+export const renderUTMMapToCanvas = async (
   segments: UtmPoint[][],
-  title: string
-): HTMLCanvasElement => {
+  title: string,
+  baseMap: BaseMapType = "global"
+): Promise<HTMLCanvasElement> => {
   const canvas = document.createElement("canvas");
   // A4 Portrait high-resolution canvas at 10 pixels per mm (210mm x 297mm)
   const width = 2100;
@@ -97,6 +130,7 @@ export const renderUTMMapToCanvas = (
   const centerPt = allPoints[0];
   const zoneNumber = centerPt.zoneNumber;
   const bandLetter = centerPt.band;
+  const hemisphere = centerPt.lat >= 0 ? "north" : "south";
 
   // Add 12% padding around BBOX
   let eastingSpan = maxEasting - minEasting;
@@ -133,8 +167,8 @@ export const renderUTMMapToCanvas = (
     northingSpan = targetNorthingSpan;
   }
 
-  // 4. Fill Map Background (Topographical Cream/Off-white background)
-  ctx.fillStyle = "#FAF9E8"; // Light yellow/cream map tint
+  // 4. Fill Base Map Background
+  ctx.fillStyle = baseMap === "global" ? "#FAF9E8" : "#E2E8F0"; // Cream default, neutral light gray fallback
   ctx.fillRect(mapFrameLeft, mapFrameTop, mapFrameWidth, mapFrameHeight);
 
   // Coordinate Conversion Helpers (UTM to Canvas X/Y)
@@ -143,9 +177,96 @@ export const renderUTMMapToCanvas = (
   };
 
   const utmToCanvasY = (northing: number) => {
-    // Northing increases upwards, canvas Y increases downwards
     return mapFrameBottom - ((northing - minNorthing) / northingSpan) * mapFrameHeight;
   };
+
+  // 4b. Fetch & Render Tile Layers if baseMap is 'esri' or 'osm'
+  if (baseMap === "esri" || baseMap === "osm") {
+    const topLeftLatLng = utmToLatLng({
+      easting: minEasting,
+      northing: maxNorthing,
+      zoneNumber,
+      hemisphere,
+      getAsString: "",
+    });
+    const bottomRightLatLng = utmToLatLng({
+      easting: maxEasting,
+      northing: minNorthing,
+      zoneNumber,
+      hemisphere,
+      getAsString: "",
+    });
+
+    const minLat = Math.min(topLeftLatLng.lat, bottomRightLatLng.lat);
+    const maxLat = Math.max(topLeftLatLng.lat, bottomRightLatLng.lat);
+    const minLng = Math.min(topLeftLatLng.lng, bottomRightLatLng.lng);
+    const maxLng = Math.max(topLeftLatLng.lng, bottomRightLatLng.lng);
+
+    const centerLat = (minLat + maxLat) / 2;
+    const lngSpan = maxLng - minLng;
+    const metersPerPixel = ((lngSpan * 111320 * Math.cos((centerLat * Math.PI) / 180)) / mapFrameWidth);
+    const calculatedZoom = Math.floor(
+      Math.log2((156543.03392 * Math.cos((centerLat * Math.PI) / 180)) / metersPerPixel)
+    );
+    const z = Math.min(Math.max(calculatedZoom, 2), baseMap === "esri" ? 17 : 18);
+
+    const xMin = Math.floor(lon2tile(minLng, z));
+    const xMax = Math.floor(lon2tile(maxLng, z));
+    const yMin = Math.floor(lat2tile(maxLat, z));
+    const yMax = Math.floor(lat2tile(minLat, z));
+
+    const tilePromises: Array<{ x: number; y: number; promise: Promise<HTMLImageElement | null> }> = [];
+
+    // Limit max tiles to 36 (6x6 grid) to prevent overwhelming memory/network
+    const subXMin = Math.max(xMin, xMin);
+    const subXMax = Math.min(xMax, xMin + 6);
+    const subYMin = Math.max(yMin, yMin);
+    const subYMax = Math.min(yMax, yMin + 6);
+
+    for (let x = subXMin; x <= subXMax; x++) {
+      for (let y = subYMin; y <= subYMax; y++) {
+        let url = "";
+        if (baseMap === "osm") {
+          url = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+        } else if (baseMap === "esri") {
+          url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
+        }
+        tilePromises.push({ x, y, promise: loadTileImage(url) });
+      }
+    }
+
+    const tileResults = await Promise.all(tilePromises.map((t) => t.promise));
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(mapFrameLeft, mapFrameTop, mapFrameWidth, mapFrameHeight);
+    ctx.clip();
+
+    tilePromises.forEach((t, i) => {
+      const img = tileResults[i];
+      if (!img) return;
+
+      const tLat1 = tile2lat(t.y, z);
+      const tLon1 = tile2lon(t.x, z);
+      const tLat2 = tile2lat(t.y + 1, z);
+      const tLon2 = tile2lon(t.x + 1, z);
+
+      const tUtm1 = latLngToUtm({ lat: tLat1, lng: tLon1 });
+      const tUtm2 = latLngToUtm({ lat: tLat2, lng: tLon2 });
+
+      const cx1 = utmToCanvasX(tUtm1.easting);
+      const cy1 = utmToCanvasY(tUtm1.northing);
+      const cx2 = utmToCanvasX(tUtm2.easting);
+      const cy2 = utmToCanvasY(tUtm2.northing);
+
+      const wTile = cx2 - cx1;
+      const hTile = cy2 - cy1;
+
+      ctx.drawImage(img, cx1, cy1, wTile, hTile);
+    });
+
+    ctx.restore();
+  }
 
   // 5. Calculate Grid Interval (Auto-fit)
   const gridStep = calculateNiceGridStep(Math.max(eastingSpan, northingSpan), 5);
@@ -154,8 +275,8 @@ export const renderUTMMapToCanvas = (
   const startGridNorthing = Math.ceil(minNorthing / gridStep) * gridStep;
 
   // 6. Draw Dotted Grid Lines inside map frame
-  ctx.strokeStyle = "#B0A88F"; // Dotted grid line color
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = baseMap === "esri" ? "#FFFFFF" : "#B0A88F"; // White on Satellite, brownish on others
+  ctx.lineWidth = baseMap === "esri" ? 1.8 : 1.5;
   ctx.setLineDash([4, 6]);
 
   // Vertical Grid Lines
@@ -186,12 +307,20 @@ export const renderUTMMapToCanvas = (
   ctx.lineWidth = 3;
   ctx.strokeRect(mapFrameLeft, mapFrameTop, mapFrameWidth, mapFrameHeight);
 
-  // 8. Draw Border Coordinate Ticks & Labels
+  // 8. Draw Header Label inside Map Frame
+  ctx.save();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+  ctx.fillRect(mapFrameLeft + 10, mapFrameTop + 10, 190, 38);
+  ctx.fillStyle = "#000000";
+  ctx.font = "bold 24px sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText("UTM WGS 84", mapFrameLeft + 22, mapFrameTop + 29);
+  ctx.restore();
+
+  // Draw Border Coordinate Ticks & Labels (on white page margins)
   ctx.fillStyle = "#000000";
   ctx.font = "bold 26px sans-serif";
-
-  // Label: UTM WGS 84 Header Label (Top Left)
-  ctx.fillText("UTM WGS 84", mapFrameLeft + 15, mapFrameTop + 35);
 
   // Easting Grid Labels (Top & Bottom Borders)
   for (let e = startGridEasting; e <= maxEasting; e += gridStep) {
@@ -313,14 +442,15 @@ export const renderUTMMapToCanvas = (
   const footerTop = mapFrameBottom + 50;
 
   // Subtitle / Map Title Label (Bottom Left)
+  const mapTypeLabel = baseMap === "esri" ? "Esri Satellite Map" : baseMap === "osm" ? "OpenStreetMap" : "Global Map";
   ctx.fillStyle = "#000000";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.font = "24px sans-serif";
-  ctx.fillText("Global Map", mapFrameLeft, footerTop);
+  ctx.fillText(mapTypeLabel, mapFrameLeft, footerTop);
 
   ctx.font = "bold 32px sans-serif";
-  ctx.fillText(title || "ukur", mapFrameLeft + 300, footerTop + 60);
+  ctx.fillText(title || "ukur", mapFrameLeft + 320, footerTop + 60);
 
   // 11. Scale Bar & Compass North Arrow (Bottom Right Footer Area)
   const scaleInfo = calculateScaleBarLength(eastingSpan);
@@ -424,11 +554,11 @@ const convertPointsToUtm = (points: [number, number][]): UtmPoint[] => {
   });
 };
 
-export const exportRoutePDF = (route: Route, customTitle?: string) => {
+export const exportRoutePDF = async (route: Route, customTitle?: string, baseMap: BaseMapType = "global") => {
   const pointsUtm = convertPointsToUtm(route.points);
   const title = customTitle || route.name || "Route Map";
 
-  const canvas = renderUTMMapToCanvas([pointsUtm], title);
+  const canvas = await renderUTMMapToCanvas([pointsUtm], title, baseMap);
 
   const pdf = new jsPDF({
     orientation: "portrait",
@@ -443,11 +573,11 @@ export const exportRoutePDF = (route: Route, customTitle?: string) => {
   pdf.save(fileName);
 };
 
-export const exportTrackPDF = (track: Track, customTitle?: string) => {
+export const exportTrackPDF = async (track: Track, customTitle?: string, baseMap: BaseMapType = "global") => {
   const segmentsUtm = track.segments.map((seg) => convertPointsToUtm(seg));
   const title = customTitle || track.name || "Track Map";
 
-  const canvas = renderUTMMapToCanvas(segmentsUtm, title);
+  const canvas = await renderUTMMapToCanvas(segmentsUtm, title, baseMap);
 
   const pdf = new jsPDF({
     orientation: "portrait",

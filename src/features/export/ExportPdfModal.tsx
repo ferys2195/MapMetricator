@@ -1,4 +1,4 @@
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,12 +8,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, FileText, Loader2 } from "lucide-react";
 import type { Route, Track } from "@/lib/gpxParser";
 import {
   renderUTMMapToCanvas,
   exportRoutePDF,
   exportTrackPDF,
+  type BaseMapType,
 } from "@/lib/pdfExporter";
 import { latLngToUtm, getLatitudeBand } from "@/lib/geoUtils";
 
@@ -34,8 +36,9 @@ export const ExportPdfModal = ({
   target,
 }: ExportPdfModalProps) => {
   const [title, setTitle] = useState("");
+  const [baseMap, setBaseMap] = useState<BaseMapType>("global");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isRendering, setIsRendering] = useState(false);
 
   useEffect(() => {
     if (target) {
@@ -50,20 +53,36 @@ export const ExportPdfModal = ({
       return;
     }
 
-    startTransition(() => {
-      let segments: Array<
-        Array<{
-          lat: number;
-          lng: number;
-          easting: number;
-          northing: number;
-          zoneNumber: number;
-          band: string;
-        }>
-      > = [];
+    let isMounted = true;
+    setIsRendering(true);
 
-      if (target.type === "route") {
-        const points = target.item.points.map(([lat, lng]) => {
+    let segments: Array<
+      Array<{
+        lat: number;
+        lng: number;
+        easting: number;
+        northing: number;
+        zoneNumber: number;
+        band: string;
+      }>
+    > = [];
+
+    if (target.type === "route") {
+      const points = target.item.points.map(([lat, lng]) => {
+        const utm = latLngToUtm({ lat, lng });
+        return {
+          lat,
+          lng,
+          easting: utm.easting,
+          northing: utm.northing,
+          zoneNumber: utm.zoneNumber,
+          band: getLatitudeBand(lat) || "N",
+        };
+      });
+      segments = [points];
+    } else if (target.type === "track") {
+      segments = target.item.segments.map((seg) =>
+        seg.map(([lat, lng]) => {
           const utm = latLngToUtm({ lat, lng });
           return {
             lat,
@@ -73,37 +92,36 @@ export const ExportPdfModal = ({
             zoneNumber: utm.zoneNumber,
             band: getLatitudeBand(lat) || "N",
           };
-        });
-        segments = [points];
-      } else if (target.type === "track") {
-        segments = target.item.segments.map((seg) =>
-          seg.map(([lat, lng]) => {
-            const utm = latLngToUtm({ lat, lng });
-            return {
-              lat,
-              lng,
-              easting: utm.easting,
-              northing: utm.northing,
-              zoneNumber: utm.zoneNumber,
-              band: getLatitudeBand(lat) || "N",
-            };
-          })
-        );
-      }
+        })
+      );
+    }
 
-      const canvas = renderUTMMapToCanvas(segments, title || "Map Export");
-      setPreviewUrl(canvas.toDataURL("image/png"));
-    });
-  }, [target, title, isOpen]);
+    renderUTMMapToCanvas(segments, title || "Map Export", baseMap)
+      .then((canvas) => {
+        if (isMounted) {
+          setPreviewUrl(canvas.toDataURL("image/png"));
+          setIsRendering(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setIsRendering(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [target, title, baseMap, isOpen]);
 
   if (!target) return null;
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    setIsRendering(true);
     if (target.type === "route") {
-      exportRoutePDF(target.item, title);
+      await exportRoutePDF(target.item, title, baseMap);
     } else {
-      exportTrackPDF(target.item, title);
+      await exportTrackPDF(target.item, title, baseMap);
     }
+    setIsRendering(false);
     onClose();
   };
 
@@ -130,6 +148,29 @@ export const ExportPdfModal = ({
             />
           </div>
 
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground">
+              Base Map Peta PDF
+            </label>
+            <Tabs
+              value={baseMap}
+              onValueChange={(val) => setBaseMap(val as BaseMapType)}
+              className="w-full"
+            >
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="global" className="text-xs">
+                  Global Map
+                </TabsTrigger>
+                <TabsTrigger value="esri" className="text-xs">
+                  Esri Imagery
+                </TabsTrigger>
+                <TabsTrigger value="osm" className="text-xs">
+                  OpenStreetMap
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
           <div className="grid grid-cols-2 gap-3 text-xs bg-muted/50 p-2.5 rounded-lg border">
             <div>
               <span className="text-muted-foreground block">Proyeksi & Grid:</span>
@@ -146,10 +187,10 @@ export const ExportPdfModal = ({
               Pratinjau Layout Peta (Preview)
             </label>
             <div className="relative border rounded-lg bg-zinc-900/5 p-2 flex justify-center items-center min-h-[320px]">
-              {isPending ? (
+              {isRendering ? (
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                  <Loader2 className="size-6 animate-spin" />
-                  <span className="text-xs">Mengolah layout peta...</span>
+                  <Loader2 className="size-6 animate-spin text-emerald-600" />
+                  <span className="text-xs font-medium">Mengunduh tile peta & membuat layout...</span>
                 </div>
               ) : previewUrl ? (
                 <img
@@ -165,15 +206,16 @@ export const ExportPdfModal = ({
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t">
-          <Button variant="outline" onClick={onClose} size="sm">
+          <Button variant="outline" onClick={onClose} size="sm" disabled={isRendering}>
             Batal
           </Button>
           <Button
             onClick={handleDownload}
             size="sm"
+            disabled={isRendering}
             className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
           >
-            <Download className="size-4" />
+            {isRendering ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
             <span>Download PDF</span>
           </Button>
         </DialogFooter>
