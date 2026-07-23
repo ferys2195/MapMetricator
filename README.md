@@ -19,13 +19,19 @@
 
 ## ✨ Key Features
 
-- **📍 GPX File Support** — Load and visualize GPX tracks and waypoints on an interactive map.
+- **📍 GPX File Support** — Load and visualize GPX tracks, routes, and waypoints on an interactive map.
 - **🌐 UTM & Lat/Lng Coordinate Support** — Input, display, and convert coordinates in UTM (Universal Transverse Mercator) and Latitude/Longitude formats.
+- **🖨️ Cartographic PDF Export (UTM WGS 84 Layout)** — Export Route & Track maps into print-ready PDF documents featuring:
+  - Outer frame with Easting ($X$) and Northing ($Y$) UTM grid labels on all 4 margin borders (e.g. `49 M 708450`).
+  - Unified reference projection to prevent spatial distortion across multi-zone routes.
+  - Multi-basemap support (**Global Map**, **Esri Satellite Imagery**, and **OpenStreetMap**).
+  - Essential cartographic elements: Scale Bar, True/Magnetic North Arrow declination indicator, and footer branding.
+  - Automatic **Page 2+ Coordinate List Table** listing point indices, Lat/Lng, UTM Easting/Northing, segment distances, and cumulative totals.
 - **📌 Waypoint Management** — Interactively add, view, edit, and organize waypoints via map clicks or structured sidebars.
 - **📐 Polygon & Area Measurement** — Draw polygons and accurately calculate surface area and perimeter using `@turf/turf`.
 - **✍️ Interactive Geoman Tools** — Full vector drawing and editing toolbar (shapes, polylines, markers, and edits) integrated directly onto Leaflet maps.
 - **🗺️ Layer Switcher & Custom Controls** — Switch map tiles, track live mouse coordinates, and control map fly-to targets easily.
-- **📄 Export Options** — Save and export polygon measurements and waypoints *(PDF export coming soon)*.
+- **📄 GPX Export Options** — Export individual routes, tracks, waypoints, or full map sessions to standardized `.gpx` files.
 
 ---
 
@@ -38,6 +44,7 @@
 | **Vite** | Next-generation frontend build tool |
 | **Leaflet & React-Leaflet** | Interactive mapping engine and React wrappers |
 | **Leaflet Geoman** | Vector drawing, editing, and measurement toolbar |
+| **jsPDF & html2canvas** | High-resolution PDF map layout & multi-page document generator |
 | **Turf.js (`@turf/turf`)** | Advanced geospatial engine for area & distance calculations |
 | **Proj4 (`proj4`)** | UTM coordinate system transformations and conversions |
 | **Zustand** | Lightweight, high-performance state management |
@@ -84,11 +91,10 @@ Ensure you have [Node.js](https://nodejs.org/) (v18+ recommended) and `npm` inst
 
 ## 📝 Note
 
-The project architecture is continuously evolving with modular feature organization (waypoint, measure, drawing, map features).
+The project architecture is continuously evolving with modular feature organization (waypoint, measure, drawing, export, map features).
 
 ---
 
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
-
