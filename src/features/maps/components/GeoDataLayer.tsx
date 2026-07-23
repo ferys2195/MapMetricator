@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useGeoStore } from "@/stores/useGeoStore";
 import { Marker, Polyline, Tooltip, Popup, LayerGroup } from "react-leaflet";
-import { Copy, Download, Trash2 } from "lucide-react";
+import { Copy, Download, Trash2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { latLngToUtm, getLatitudeBand } from "@/lib/geoUtils";
 import { exportWaypointGPX, exportRouteGPX, exportTrackGPX } from "@/lib/gpxExporter";
+import { ExportPdfModal, type ExportPdfTarget } from "@/features/export";
 import * as turf from "@turf/turf";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -61,6 +62,7 @@ const getLineDetails = (points: [number, number][]) => {
 export default function GeoDataLayer() {
   const { waypoints, routes, tracks, removeWaypoint, removeRoute, removeTrack } = useGeoStore();
   const [selectedItem, setSelectedItem] = useState<{ id: string; type: 'track' | 'route'; segmentIdx?: number } | null>(null);
+  const [exportPdfTarget, setExportPdfTarget] = useState<ExportPdfTarget>(null);
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -186,6 +188,12 @@ export default function GeoDataLayer() {
                       <Download size={12} /> GPX
                     </button>
                     <button
+                      onClick={() => setExportPdfTarget({ type: "route", item: route })}
+                      className="flex items-center gap-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2 py-1 rounded transition-colors cursor-pointer font-medium"
+                    >
+                      <FileText size={12} /> PDF
+                    </button>
+                    <button
                       onClick={() => {
                         removeRoute(route.id);
                         toast.success(`${route.name} berhasil dihapus`);
@@ -250,6 +258,12 @@ export default function GeoDataLayer() {
                         <Download size={12} /> GPX
                       </button>
                       <button
+                        onClick={() => setExportPdfTarget({ type: "track", item: track })}
+                        className="flex items-center gap-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2 py-1 rounded transition-colors cursor-pointer font-medium"
+                      >
+                        <FileText size={12} /> PDF
+                      </button>
+                      <button
                         onClick={() => {
                           removeTrack(track.id);
                           toast.success(`${track.name} berhasil dihapus`);
@@ -267,6 +281,13 @@ export default function GeoDataLayer() {
           );
         })
       )}
+
+      <ExportPdfModal
+        isOpen={!!exportPdfTarget}
+        onClose={() => setExportPdfTarget(null)}
+        target={exportPdfTarget}
+      />
     </>
   );
 }
+

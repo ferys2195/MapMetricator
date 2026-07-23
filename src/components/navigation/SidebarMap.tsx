@@ -1,6 +1,6 @@
 import GPXParser from "../UploadGPX";
 import { useGeoStore } from "@/stores/useGeoStore";
-import { Map, Search, Download, Trash2 } from "lucide-react";
+import { Map, Search, Download, Trash2, FileText } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -17,6 +17,7 @@ import { Separator } from "../ui/separator";
 import L from "leaflet";
 import { useState } from "react";
 import { WaypointItem, AddWaypointDialog } from "@/features/waypoint";
+import { ExportPdfModal, type ExportPdfTarget } from "@/features/export";
 import {
   InputGroup,
   InputGroupAddon,
@@ -41,6 +42,7 @@ const SidebarMap = () => {
   const [indexFilter, setIndexFilter] = useState("");
   const [routeFilter, setRouteFilter] = useState("");
   const [trackFilter, setTrackFilter] = useState("");
+  const [exportPdfTarget, setExportPdfTarget] = useState<ExportPdfTarget>(null);
 
   const markersToWaypoint = waypoints.map((wpt, index) => ({
     id: index,
@@ -202,6 +204,15 @@ const SidebarMap = () => {
                             <Download size={12} />
                           </Button>
                           <Button
+                            variant="outline"
+                            size="icon-sm"
+                            onClick={() => setExportPdfTarget({ type: "route", item: route })}
+                            title="Export PDF (UTM WGS 84)"
+                            className="h-7 w-7 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                          >
+                            <FileText size={12} />
+                          </Button>
+                          <Button
                             variant="destructive"
                             size="icon-sm"
                             onClick={() => removeRoute(route.id)}
@@ -262,6 +273,15 @@ const SidebarMap = () => {
                             <Download size={12} />
                           </Button>
                           <Button
+                            variant="outline"
+                            size="icon-sm"
+                            onClick={() => setExportPdfTarget({ type: "track", item: track })}
+                            title="Export PDF (UTM WGS 84)"
+                            className="h-7 w-7 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                          >
+                            <FileText size={12} />
+                          </Button>
+                          <Button
                             variant="destructive"
                             size="icon-sm"
                             onClick={() => removeTrack(track.id)}
@@ -300,6 +320,11 @@ const SidebarMap = () => {
         </div>
       </SidebarFooter>
       <AddWaypointDialog />
+      <ExportPdfModal
+        isOpen={!!exportPdfTarget}
+        onClose={() => setExportPdfTarget(null)}
+        target={exportPdfTarget}
+      />
     </Sidebar>
   );
 };
