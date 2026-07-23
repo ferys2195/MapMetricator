@@ -17,7 +17,6 @@ import {
   exportTrackPDF,
   type BaseMapType,
 } from "@/lib/pdfExporter";
-import { latLngToUtm, getLatitudeBand } from "@/lib/geoUtils";
 
 export type ExportPdfTarget =
   | { type: "route"; item: Route }
@@ -56,47 +55,15 @@ export const ExportPdfModal = ({
     let isMounted = true;
     setIsRendering(true);
 
-    let segments: Array<
-      Array<{
-        lat: number;
-        lng: number;
-        easting: number;
-        northing: number;
-        zoneNumber: number;
-        band: string;
-      }>
-    > = [];
+    let rawSegments: [number, number][][] = [];
 
     if (target.type === "route") {
-      const points = target.item.points.map(([lat, lng]) => {
-        const utm = latLngToUtm({ lat, lng });
-        return {
-          lat,
-          lng,
-          easting: utm.easting,
-          northing: utm.northing,
-          zoneNumber: utm.zoneNumber,
-          band: getLatitudeBand(lat) || "N",
-        };
-      });
-      segments = [points];
+      rawSegments = [target.item.points];
     } else if (target.type === "track") {
-      segments = target.item.segments.map((seg) =>
-        seg.map(([lat, lng]) => {
-          const utm = latLngToUtm({ lat, lng });
-          return {
-            lat,
-            lng,
-            easting: utm.easting,
-            northing: utm.northing,
-            zoneNumber: utm.zoneNumber,
-            band: getLatitudeBand(lat) || "N",
-          };
-        })
-      );
+      rawSegments = target.item.segments;
     }
 
-    renderUTMMapToCanvas(segments, title || "Map Export", baseMap)
+    renderUTMMapToCanvas(rawSegments, title || "Map Export", baseMap)
       .then((canvas) => {
         if (isMounted) {
           setPreviewUrl(canvas.toDataURL("image/png"));
@@ -174,7 +141,7 @@ export const ExportPdfModal = ({
           <div className="grid grid-cols-2 gap-3 text-xs bg-muted/50 p-2.5 rounded-lg border">
             <div>
               <span className="text-muted-foreground block">Proyeksi & Grid:</span>
-              <span className="font-semibold text-foreground">UTM WGS 84 (Auto Fit)</span>
+              <span className="font-semibold text-foreground">UTM WGS 84 (Unified Proj)</span>
             </div>
             <div>
               <span className="text-muted-foreground block">Ukuran Kertas:</span>

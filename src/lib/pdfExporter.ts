@@ -1,5 +1,10 @@
 import jsPDF from "jspdf";
-import { latLngToUtm, utmToLatLng, getLatitudeBand } from "./geoUtils";
+import {
+  getUtmZoneFromLongitude,
+  getLatitudeBand,
+  latLngToUtmWithZone,
+  utmToLatLngWithZone,
+} from "./geoUtils";
 import type { Route, Track } from "./gpxParser";
 
 export type BaseMapType = "global" | "esri" | "osm";
@@ -17,8 +22,6 @@ interface UtmPoint {
   lng: number;
   easting: number;
   northing: number;
-  zoneNumber: number;
-  band: string;
 }
 
 const calculateNiceGridStep = (range: number, targetTicks = 5): number => {
@@ -77,7 +80,7 @@ const loadTileImage = (url: string): Promise<HTMLImageElement | null> => {
 };
 
 export const renderUTMMapToCanvas = async (
-  segments: UtmPoint[][],
+  rawSegments: [number, number][][],
   title: string,
   baseMap: BaseMapType = "global"
 ): Promise<HTMLCanvasElement> => {
@@ -111,26 +114,51 @@ export const renderUTMMapToCanvas = async (
   const mapFrameWidth = mapFrameRight - mapFrameLeft;
   const mapFrameHeight = mapFrameBottom - mapFrameTop;
 
-  // 3. Extract all UTM points to compute Bounding Box (BBOX)
-  const allPoints = segments.flat();
-  if (allPoints.length === 0) return canvas;
+  // 3. Extract all Lat/Lng points & Compute Unified Reference UTM Zone for the entire map
+  const allLatLngs = rawSegments.flat();
+  if (allLatLngs.length === 0) return canvas;
+
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+
+  allLatLngs.forEach(([lat, lng]) => {
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+  });
+
+  const centerLat = (minLat + maxLat) / 2;
+  const centerLng = (minLng + maxLng) / 2;
+
+  // Unified Reference UTM Zone & Hemisphere for ALL points in this map view
+  const zoneNumber = getUtmZoneFromLongitude(centerLng);
+  const hemisphere: "north" | "south" = centerLat >= 0 ? "north" : "south";
+  const bandLetter = getLatitudeBand(centerLat) || "N";
+
+  // Project all points into the UNIFIED Reference UTM Zone
+  const segments: UtmPoint[][] = rawSegments.map((seg) =>
+    seg.map(([lat, lng]) => {
+      const { easting, northing } = latLngToUtmWithZone({ lat, lng }, zoneNumber, hemisphere);
+      return { lat, lng, easting, northing };
+    })
+  );
+
+  const allUtmPoints = segments.flat();
 
   let minEasting = Infinity;
   let maxEasting = -Infinity;
   let minNorthing = Infinity;
   let maxNorthing = -Infinity;
 
-  allPoints.forEach((pt) => {
+  allUtmPoints.forEach((pt) => {
     if (pt.easting < minEasting) minEasting = pt.easting;
     if (pt.easting > maxEasting) maxEasting = pt.easting;
     if (pt.northing < minNorthing) minNorthing = pt.northing;
     if (pt.northing > maxNorthing) maxNorthing = pt.northing;
   });
-
-  const centerPt = allPoints[Math.floor(allPoints.length / 2)] || allPoints[0];
-  const zoneNumber = centerPt.zoneNumber;
-  const bandLetter = centerPt.band;
-  const hemisphere = centerPt.lat >= 0 ? "north" : "south";
 
   // Add 12% padding around BBOX
   let eastingSpan = maxEasting - minEasting;
@@ -149,7 +177,7 @@ export const renderUTMMapToCanvas = async (
   eastingSpan = maxEasting - minEasting;
   northingSpan = maxNorthing - minNorthing;
 
-  // Adjust aspect ratio to match map frame (uniform scale 1:1)
+  // Adjust aspect ratio to match map frame (uniform scale 1:1, no spatial distortion!)
   const frameAspect = mapFrameWidth / mapFrameHeight;
   const dataAspect = eastingSpan / northingSpan;
 
@@ -182,42 +210,38 @@ export const renderUTMMapToCanvas = async (
 
   // 4b. Fetch & Render Tile Layers if baseMap is 'esri' or 'osm'
   if (baseMap === "esri" || baseMap === "osm") {
-    const topLeftLatLng = utmToLatLng({
-      easting: minEasting,
-      northing: maxNorthing,
+    // Unproject canvas frame corners back to Lat/Lng using Unified Reference Zone
+    const topLeftLatLng = utmToLatLngWithZone(
+      { easting: minEasting, northing: maxNorthing },
       zoneNumber,
-      hemisphere,
-      getAsString: "",
-    });
-    const bottomRightLatLng = utmToLatLng({
-      easting: maxEasting,
-      northing: minNorthing,
+      hemisphere
+    );
+    const bottomRightLatLng = utmToLatLngWithZone(
+      { easting: maxEasting, northing: minNorthing },
       zoneNumber,
-      hemisphere,
-      getAsString: "",
-    });
+      hemisphere
+    );
 
-    const minLat = Math.min(topLeftLatLng.lat, bottomRightLatLng.lat);
-    const maxLat = Math.max(topLeftLatLng.lat, bottomRightLatLng.lat);
-    const minLng = Math.min(topLeftLatLng.lng, bottomRightLatLng.lng);
-    const maxLng = Math.max(topLeftLatLng.lng, bottomRightLatLng.lng);
+    const tileMinLat = Math.min(topLeftLatLng.lat, bottomRightLatLng.lat);
+    const tileMaxLat = Math.max(topLeftLatLng.lat, bottomRightLatLng.lat);
+    const tileMinLng = Math.min(topLeftLatLng.lng, bottomRightLatLng.lng);
+    const tileMaxLng = Math.max(topLeftLatLng.lng, bottomRightLatLng.lng);
 
-    const centerLat = (minLat + maxLat) / 2;
-    const lngSpan = maxLng - minLng;
+    const lngSpan = tileMaxLng - tileMinLng;
     const metersPerPixel = ((lngSpan * 111320 * Math.cos((centerLat * Math.PI) / 180)) / mapFrameWidth);
     const calculatedZoom = Math.floor(
       Math.log2((156543.03392 * Math.cos((centerLat * Math.PI) / 180)) / metersPerPixel)
     );
     const z = Math.min(Math.max(calculatedZoom, 2), baseMap === "esri" ? 17 : 18);
 
-    const xMin = Math.floor(lon2tile(minLng, z));
-    const xMax = Math.floor(lon2tile(maxLng, z));
-    const yMin = Math.floor(lat2tile(maxLat, z));
-    const yMax = Math.floor(lat2tile(minLat, z));
+    const xMin = Math.floor(lon2tile(tileMinLng, z));
+    const xMax = Math.floor(lon2tile(tileMaxLng, z));
+    const yMin = Math.floor(lat2tile(tileMaxLat, z));
+    const yMax = Math.floor(lat2tile(tileMinLat, z));
 
     const tilePromises: Array<{ x: number; y: number; promise: Promise<HTMLImageElement | null> }> = [];
 
-    // Limit max tiles to 36 (6x6 grid) to prevent overwhelming memory/network
+    // Limit max tiles to 36 (6x6 grid)
     const subXMin = Math.max(xMin, xMin);
     const subXMax = Math.min(xMax, xMin + 6);
     const subYMin = Math.max(yMin, yMin);
@@ -251,8 +275,8 @@ export const renderUTMMapToCanvas = async (
       const tLat2 = tile2lat(t.y + 1, z);
       const tLon2 = tile2lon(t.x + 1, z);
 
-      const tUtm1 = latLngToUtm({ lat: tLat1, lng: tLon1 });
-      const tUtm2 = latLngToUtm({ lat: tLat2, lng: tLon2 });
+      const tUtm1 = latLngToUtmWithZone({ lat: tLat1, lng: tLon1 }, zoneNumber, hemisphere);
+      const tUtm2 = latLngToUtmWithZone({ lat: tLat2, lng: tLon2 }, zoneNumber, hemisphere);
 
       const cx1 = utmToCanvasX(tUtm1.easting);
       const cy1 = utmToCanvasY(tUtm1.northing);
@@ -410,7 +434,7 @@ export const renderUTMMapToCanvas = async (
     ctx.stroke();
 
     // Draw Inner Bright Polyline Line
-    ctx.strokeStyle = "#4ADE80"; // Bright Green Polyline Line (as in reference image)
+    ctx.strokeStyle = "#4ADE80"; // Bright Green Polyline Line
     ctx.lineWidth = 6;
     ctx.beginPath();
     segment.forEach((pt, idx) => {
@@ -487,7 +511,7 @@ export const renderUTMMapToCanvas = async (
     ctx.lineTo(x, scaleY + 8);
     ctx.stroke();
 
-    // Scale text value (0 m, 25 m, 50 m, 75 m, 100 m)
+    // Scale text value
     const label = i === scaleInfo.divisions ? `${val} ${scaleInfo.unit}` : `${val} m`;
     ctx.fillText(label, x, scaleY - 12);
   }
@@ -541,26 +565,10 @@ export const renderUTMMapToCanvas = async (
   return canvas;
 };
 
-const convertPointsToUtm = (points: [number, number][]): UtmPoint[] => {
-  return points.map(([lat, lng]) => {
-    const utm = latLngToUtm({ lat, lng });
-    const band = getLatitudeBand(lat);
-    return {
-      lat,
-      lng,
-      easting: utm.easting,
-      northing: utm.northing,
-      zoneNumber: utm.zoneNumber,
-      band: band || "N",
-    };
-  });
-};
-
 export const exportRoutePDF = async (route: Route, customTitle?: string, baseMap: BaseMapType = "global") => {
-  const pointsUtm = convertPointsToUtm(route.points);
   const title = customTitle || route.name || "Route Map";
 
-  const canvas = await renderUTMMapToCanvas([pointsUtm], title, baseMap);
+  const canvas = await renderUTMMapToCanvas([route.points], title, baseMap);
 
   const pdf = new jsPDF({
     orientation: "portrait",
@@ -576,10 +584,9 @@ export const exportRoutePDF = async (route: Route, customTitle?: string, baseMap
 };
 
 export const exportTrackPDF = async (track: Track, customTitle?: string, baseMap: BaseMapType = "global") => {
-  const segmentsUtm = track.segments.map((seg) => convertPointsToUtm(seg));
   const title = customTitle || track.name || "Track Map";
 
-  const canvas = await renderUTMMapToCanvas(segmentsUtm, title, baseMap);
+  const canvas = await renderUTMMapToCanvas(track.segments, title, baseMap);
 
   const pdf = new jsPDF({
     orientation: "portrait",
