@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import * as turf from "@turf/turf";
 import {
   getUtmZoneFromLongitude,
   getLatitudeBand,
@@ -565,10 +566,214 @@ export const renderUTMMapToCanvas = async (
   return canvas;
 };
 
+// Render Page 2+ Coordinate Tables
+export const renderCoordinateTableCanvases = (
+  rawSegments: [number, number][][],
+  title: string
+): HTMLCanvasElement[] => {
+  const allLatLngs = rawSegments.flat();
+  if (allLatLngs.length === 0) return [];
+
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+
+  allLatLngs.forEach(([lat, lng]) => {
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+  });
+
+  const centerLat = (minLat + maxLat) / 2;
+  const centerLng = (minLng + maxLng) / 2;
+
+  const zoneNumber = getUtmZoneFromLongitude(centerLng);
+  const hemisphere: "north" | "south" = centerLat >= 0 ? "north" : "south";
+  const bandLetter = getLatitudeBand(centerLat) || "N";
+
+  let cumDistance = 0;
+  const pointRows = allLatLngs.map(([lat, lng], idx) => {
+    let segDist = 0;
+    if (idx > 0) {
+      const [prevLat, prevLng] = allLatLngs[idx - 1];
+      const p1 = turf.point([prevLng, prevLat]);
+      const p2 = turf.point([lng, lat]);
+      segDist = turf.distance(p1, p2, { units: "meters" });
+      cumDistance += segDist;
+    }
+    const { easting, northing } = latLngToUtmWithZone({ lat, lng }, zoneNumber, hemisphere);
+    return {
+      index: idx + 1,
+      lat,
+      lng,
+      easting,
+      northing,
+      segDist,
+      cumDistance,
+    };
+  });
+
+  const rowsPerPage = 38;
+  const totalPages = Math.ceil(pointRows.length / rowsPerPage);
+  const canvases: HTMLCanvasElement[] = [];
+
+  for (let page = 0; page < totalPages; page++) {
+    const canvas = document.createElement("canvas");
+    const width = 2100;
+    const height = 2970;
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) continue;
+
+    // Background & Page Border
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, width, height);
+
+    const pageMargin = 90;
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(pageMargin, pageMargin, width - 2 * pageMargin, height - 2 * pageMargin);
+
+    // Header Title Area
+    const startX = 140;
+    let startY = 160;
+
+    ctx.fillStyle = "#0F172A"; // Dark slate header text
+    ctx.font = "bold 36px sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText("DAFTAR KOORDINAT LINTASAN", startX, startY);
+
+    ctx.font = "24px sans-serif";
+    ctx.fillStyle = "#475569";
+    ctx.fillText(`Nama: ${title}`, startX, startY + 50);
+    ctx.fillText(
+      `Proyeksi: UTM Zone ${zoneNumber} ${bandLetter} (${hemisphere.toUpperCase()}) | Datum: WGS 84`,
+      startX,
+      startY + 90
+    );
+
+    // Date & Page Indicator (Top Right)
+    ctx.textAlign = "right";
+    ctx.font = "20px sans-serif";
+    const dateStr = new Date().toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+    ctx.fillText(`Tanggal: ${dateStr}`, width - startX, startY + 50);
+    ctx.fillText(`Halaman ${page + 2} dari ${totalPages + 1}`, width - startX, startY + 90);
+
+    // Table Header
+    startY += 150;
+    const tableWidth = width - 2 * startX;
+    const colWidths = [100, 260, 260, 310, 320, 280, 290]; // 7 columns
+    const colAligns: Array<CanvasTextAlign> = ["center", "right", "right", "right", "right", "right", "right"];
+    const headers = [
+      "No",
+      "Latitude (°)",
+      "Longitude (°)",
+      "Easting X (m)",
+      "Northing Y (m)",
+      "Segmen (m)",
+      "Total (m)",
+    ];
+
+    const rowHeight = 52;
+
+    // Draw Table Header Box
+    ctx.fillStyle = "#1E293B"; // Dark blue-slate header
+    ctx.fillRect(startX, startY, tableWidth, rowHeight);
+
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "bold 20px sans-serif";
+    ctx.textBaseline = "middle";
+
+    let currentX = startX;
+    headers.forEach((h, i) => {
+      const w = colWidths[i];
+      const align = colAligns[i];
+      ctx.textAlign = align;
+      let textX = currentX + w / 2;
+      if (align === "right") textX = currentX + w - 15;
+      else if (align === "left") textX = currentX + 15;
+
+      ctx.fillText(h, textX, startY + rowHeight / 2);
+      currentX += w;
+    });
+
+    startY += rowHeight;
+
+    // Table Data Rows
+    const pageRows = pointRows.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+
+    ctx.font = "19px sans-serif";
+
+    pageRows.forEach((row, rIdx) => {
+      // Zebra striping
+      ctx.fillStyle = rIdx % 2 === 0 ? "#F8FAFC" : "#FFFFFF";
+      ctx.fillRect(startX, startY, tableWidth, rowHeight);
+
+      // Grid line border below row
+      ctx.strokeStyle = "#E2E8F0";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(startX, startY + rowHeight);
+      ctx.lineTo(startX + tableWidth, startY + rowHeight);
+      ctx.stroke();
+
+      // Row values
+      const vals = [
+        `${row.index}`,
+        row.lat.toFixed(6),
+        row.lng.toFixed(6),
+        row.easting.toFixed(2),
+        row.northing.toFixed(2),
+        row.index === 1 ? "-" : row.segDist >= 1000 ? `${(row.segDist / 1000).toFixed(2)} km` : `${row.segDist.toFixed(1)} m`,
+        row.cumDistance >= 1000 ? `${(row.cumDistance / 1000).toFixed(2)} km` : `${row.cumDistance.toFixed(1)} m`,
+      ];
+
+      ctx.fillStyle = "#0F172A";
+      let cX = startX;
+      vals.forEach((v, cIdx) => {
+        const w = colWidths[cIdx];
+        const align = colAligns[cIdx];
+        ctx.textAlign = align;
+        let textX = cX + w / 2;
+        if (align === "right") textX = cX + w - 15;
+        else if (align === "left") textX = cX + 15;
+
+        ctx.fillText(v, textX, startY + rowHeight / 2);
+        cX += w;
+      });
+
+      startY += rowHeight;
+    });
+
+    // Draw Outer Table Border
+    const tableTotalHeight = rowHeight * (pageRows.length + 1);
+    ctx.strokeStyle = "#475569";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(startX, startY - tableTotalHeight, tableWidth, tableTotalHeight);
+
+    canvases.push(canvas);
+  }
+
+  return canvases;
+};
+
 export const exportRoutePDF = async (route: Route, customTitle?: string, baseMap: BaseMapType = "global") => {
   const title = customTitle || route.name || "Route Map";
 
-  const canvas = await renderUTMMapToCanvas([route.points], title, baseMap);
+  // 1. Generate Page 1: Map Layout
+  const mapCanvas = await renderUTMMapToCanvas([route.points], title, baseMap);
+
+  // 2. Generate Page 2+: Coordinate Tables
+  const tableCanvases = renderCoordinateTableCanvases([route.points], title);
 
   const pdf = new jsPDF({
     orientation: "portrait",
@@ -576,8 +781,16 @@ export const exportRoutePDF = async (route: Route, customTitle?: string, baseMap
     format: "a4",
   });
 
-  const imgData = canvas.toDataURL("image/png");
-  pdf.addImage(imgData, "PNG", 0, 0, 210, 297);
+  // Page 1: Map
+  const mapImg = mapCanvas.toDataURL("image/png");
+  pdf.addImage(mapImg, "PNG", 0, 0, 210, 297);
+
+  // Page 2+: Tables
+  tableCanvases.forEach((tCanvas) => {
+    pdf.addPage();
+    const tImg = tCanvas.toDataURL("image/png");
+    pdf.addImage(tImg, "PNG", 0, 0, 210, 297);
+  });
 
   const fileName = `${title.toLowerCase().replace(/[^a-z0-9]/g, "-")}-utm-wgs84.pdf`;
   pdf.save(fileName);
@@ -586,7 +799,11 @@ export const exportRoutePDF = async (route: Route, customTitle?: string, baseMap
 export const exportTrackPDF = async (track: Track, customTitle?: string, baseMap: BaseMapType = "global") => {
   const title = customTitle || track.name || "Track Map";
 
-  const canvas = await renderUTMMapToCanvas(track.segments, title, baseMap);
+  // 1. Generate Page 1: Map Layout
+  const mapCanvas = await renderUTMMapToCanvas(track.segments, title, baseMap);
+
+  // 2. Generate Page 2+: Coordinate Tables
+  const tableCanvases = renderCoordinateTableCanvases(track.segments, title);
 
   const pdf = new jsPDF({
     orientation: "portrait",
@@ -594,8 +811,16 @@ export const exportTrackPDF = async (track: Track, customTitle?: string, baseMap
     format: "a4",
   });
 
-  const imgData = canvas.toDataURL("image/png");
-  pdf.addImage(imgData, "PNG", 0, 0, 210, 297);
+  // Page 1: Map
+  const mapImg = mapCanvas.toDataURL("image/png");
+  pdf.addImage(mapImg, "PNG", 0, 0, 210, 297);
+
+  // Page 2+: Tables
+  tableCanvases.forEach((tCanvas) => {
+    pdf.addPage();
+    const tImg = tCanvas.toDataURL("image/png");
+    pdf.addImage(tImg, "PNG", 0, 0, 210, 297);
+  });
 
   const fileName = `${title.toLowerCase().replace(/[^a-z0-9]/g, "-")}-utm-wgs84.pdf`;
   pdf.save(fileName);

@@ -9,10 +9,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, FileText, Loader2 } from "lucide-react";
+import { Download, FileText, Loader2, Map as MapIcon, Table } from "lucide-react";
 import type { Route, Track } from "@/lib/gpxParser";
 import {
   renderUTMMapToCanvas,
+  renderCoordinateTableCanvases,
   exportRoutePDF,
   exportTrackPDF,
   type BaseMapType,
@@ -36,7 +37,9 @@ export const ExportPdfModal = ({
 }: ExportPdfModalProps) => {
   const [title, setTitle] = useState("");
   const [baseMap, setBaseMap] = useState<BaseMapType>("global");
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTab, setPreviewTab] = useState<"map" | "table">("map");
+  const [mapPreviewUrl, setMapPreviewUrl] = useState<string | null>(null);
+  const [tablePreviewUrl, setTablePreviewUrl] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
 
   useEffect(() => {
@@ -48,7 +51,8 @@ export const ExportPdfModal = ({
 
   useEffect(() => {
     if (!target || !isOpen) {
-      setPreviewUrl(null);
+      setMapPreviewUrl(null);
+      setTablePreviewUrl(null);
       return;
     }
 
@@ -63,10 +67,18 @@ export const ExportPdfModal = ({
       rawSegments = target.item.segments;
     }
 
-    renderUTMMapToCanvas(rawSegments, title || "Map Export", baseMap)
-      .then((canvas) => {
+    Promise.all([
+      renderUTMMapToCanvas(rawSegments, title || "Map Export", baseMap),
+      Promise.resolve(renderCoordinateTableCanvases(rawSegments, title || "Map Export")),
+    ])
+      .then(([mapCanvas, tableCanvases]) => {
         if (isMounted) {
-          setPreviewUrl(canvas.toDataURL("image/png"));
+          setMapPreviewUrl(mapCanvas.toDataURL("image/png"));
+          if (tableCanvases.length > 0) {
+            setTablePreviewUrl(tableCanvases[0].toDataURL("image/png"));
+          } else {
+            setTablePreviewUrl(null);
+          }
           setIsRendering(false);
         }
       })
@@ -98,7 +110,7 @@ export const ExportPdfModal = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <FileText className="size-5 text-emerald-600" />
-            <span>Export Map PDF (UTM WGS 84 Layout)</span>
+            <span>Export Map & Table PDF (UTM WGS 84 Layout)</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -140,8 +152,8 @@ export const ExportPdfModal = ({
 
           <div className="grid grid-cols-2 gap-3 text-xs bg-muted/50 p-2.5 rounded-lg border">
             <div>
-              <span className="text-muted-foreground block">Proyeksi & Grid:</span>
-              <span className="font-semibold text-foreground">UTM WGS 84 (Unified Proj)</span>
+              <span className="text-muted-foreground block">Format Dokumen:</span>
+              <span className="font-semibold text-foreground">Halaman 1: Peta | Hal 2+: Tabel</span>
             </div>
             <div>
               <span className="text-muted-foreground block">Ukuran Kertas:</span>
@@ -149,24 +161,51 @@ export const ExportPdfModal = ({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground">
-              Pratinjau Layout Peta (Preview)
-            </label>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Pratinjau Halaman PDF (Preview)
+              </label>
+              <Tabs
+                value={previewTab}
+                onValueChange={(val) => setPreviewTab(val as "map" | "table")}
+                className="w-auto"
+              >
+                <TabsList className="h-7 p-0.5 bg-muted/70">
+                  <TabsTrigger value="map" className="text-[11px] h-6 px-2.5 gap-1">
+                    <MapIcon className="size-3" /> Hal 1 (Peta)
+                  </TabsTrigger>
+                  <TabsTrigger value="table" className="text-[11px] h-6 px-2.5 gap-1">
+                    <Table className="size-3" /> Hal 2 (Tabel)
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
             <div className="relative border rounded-lg bg-zinc-900/5 p-2 flex justify-center items-center min-h-[320px]">
               {isRendering ? (
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                   <Loader2 className="size-6 animate-spin text-emerald-600" />
-                  <span className="text-xs font-medium">Mengunduh tile peta & membuat layout...</span>
+                  <span className="text-xs font-medium">Mengolah peta & tabel koordinat...</span>
                 </div>
-              ) : previewUrl ? (
+              ) : previewTab === "map" ? (
+                mapPreviewUrl ? (
+                  <img
+                    src={mapPreviewUrl}
+                    alt="Map Preview"
+                    className="max-h-[360px] w-auto shadow-md rounded border bg-white object-contain"
+                  />
+                ) : (
+                  <span className="text-xs text-muted-foreground">Pratinjau peta tidak tersedia</span>
+                )
+              ) : tablePreviewUrl ? (
                 <img
-                  src={previewUrl}
-                  alt="PDF Preview"
+                  src={tablePreviewUrl}
+                  alt="Table Preview"
                   className="max-h-[360px] w-auto shadow-md rounded border bg-white object-contain"
                 />
               ) : (
-                <span className="text-xs text-muted-foreground">Pratinjau tidak tersedia</span>
+                <span className="text-xs text-muted-foreground">Pratinjau tabel tidak tersedia</span>
               )}
             </div>
           </div>
