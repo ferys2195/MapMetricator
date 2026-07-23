@@ -1,6 +1,6 @@
 import GPXParser from "../UploadGPX";
 import { useGeoStore } from "@/stores/useGeoStore";
-import { Map, Search } from "lucide-react";
+import { Map, Search, Download, Trash2 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -12,6 +12,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "../ui/sidebar";
+import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
 import L from "leaflet";
 import { useState } from "react";
@@ -22,9 +23,21 @@ import {
   InputGroupInput,
 } from "../ui/input-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import {
+  exportRouteGPX,
+  exportTrackGPX,
+  exportGlobalGPX,
+} from "@/lib/gpxExporter";
 
 const SidebarMap = () => {
-  const { waypoints, tracks, routes } = useGeoStore();
+  const {
+    waypoints,
+    tracks,
+    routes,
+    removeRoute,
+    removeTrack,
+  } = useGeoStore();
+
   const [indexFilter, setIndexFilter] = useState("");
   const [routeFilter, setRouteFilter] = useState("");
   const [trackFilter, setTrackFilter] = useState("");
@@ -53,6 +66,19 @@ const SidebarMap = () => {
     return track.name?.toLowerCase().includes(query) || false;
   });
 
+  const hasAnyData =
+    waypoints.length > 0 ||
+    routes.length > 0 ||
+    tracks.length > 0;
+
+  const handleGlobalExport = () => {
+    exportGlobalGPX({
+      waypoints,
+      routes,
+      tracks,
+    });
+  };
+
   return (
     <Sidebar variant="inset" className="z-2000">
       <SidebarHeader>
@@ -74,24 +100,36 @@ const SidebarMap = () => {
       </SidebarHeader>
       <SidebarContent className="overflow-hidden">
         <SidebarGroup>
-          <SidebarGroupLabel>Open GPX File</SidebarGroupLabel>
-          <SidebarMenu>
+          <SidebarGroupLabel>Map Actions</SidebarGroupLabel>
+          <SidebarMenu className="space-y-2">
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
                 <GPXParser />
               </SidebarMenuButton>
             </SidebarMenuItem>
+            {hasAnyData && (
+              <SidebarMenuItem>
+                <Button
+                  onClick={handleGlobalExport}
+                  className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                  size="sm"
+                >
+                  <Download size={14} />
+                  <span>Export Global GPX</span>
+                </Button>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarGroup>
-        
-        <div className="px-2 mt-4 flex flex-col flex-1 min-h-0">
+
+        <div className="px-2 mt-2 flex flex-col flex-1 min-h-0">
           <Tabs defaultValue="waypoint" className="w-full flex flex-col flex-1 min-h-0">
-            <TabsList className="grid w-full grid-cols-3 mb-4 shrink-0">
-              <TabsTrigger value="waypoint">Waypoint</TabsTrigger>
-              <TabsTrigger value="route">Route</TabsTrigger>
-              <TabsTrigger value="track">Track</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 mb-3 shrink-0 text-xs">
+              <TabsTrigger value="waypoint">Waypoint ({waypoints.length})</TabsTrigger>
+              <TabsTrigger value="route">Route ({routes.length})</TabsTrigger>
+              <TabsTrigger value="track">Track ({tracks.length})</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="waypoint" className="flex-1 overflow-hidden outline-none">
               <SidebarGroup className="p-0 h-full flex flex-col">
                 <SidebarMenu className="space-y-2.5 h-full flex flex-col">
@@ -99,7 +137,7 @@ const SidebarMap = () => {
                     <SidebarMenuItem className="shrink-0">
                       <InputGroup className="max-w-xs">
                         <InputGroupInput
-                          placeholder="Filter markers by index..."
+                          placeholder="Filter markers..."
                           value={indexFilter}
                           onChange={(e) => setIndexFilter(e.target.value)}
                         />
@@ -110,7 +148,7 @@ const SidebarMap = () => {
                     </SidebarMenuItem>
                   )}
                   <SidebarMenuItem className="flex-1 overflow-hidden">
-                    <div className="space-y-0.5 h-full overflow-y-auto pr-1 pb-2">
+                    <div className="space-y-1.5 h-full overflow-y-auto pr-1 pb-2">
                       {filteredMarkers.map(({ id, marker }) => (
                         <WaypointItem key={id} id={id} marker={marker} />
                       ))}
@@ -119,7 +157,7 @@ const SidebarMap = () => {
                 </SidebarMenu>
               </SidebarGroup>
             </TabsContent>
-            
+
             <TabsContent value="route" className="flex-1 overflow-hidden outline-none">
               <SidebarGroup className="p-0 h-full flex flex-col">
                 {routes.length > 0 && (
@@ -143,16 +181,43 @@ const SidebarMap = () => {
                     <p className="text-sm text-muted-foreground text-center py-4">No routes match your filter</p>
                   ) : (
                     filteredRoutes.map((route, i) => (
-                      <div key={route.id || i} className="rounded-md border px-2.5 py-2 text-sm">
-                        <div className="font-medium">{route.name}</div>
-                        <div className="text-xs text-muted-foreground">{route.points.length} points</div>
+                      <div
+                        key={route.id || i}
+                        className="group flex items-center justify-between rounded-md border px-2.5 py-2 text-xs hover:bg-secondary transition-colors"
+                      >
+                        <div className="flex-1 min-w-0 pr-2">
+                          <div className="font-medium truncate">{route.name}</div>
+                          <div className="text-muted-foreground text-[11px]">
+                            {route.points.length} points
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            onClick={() => exportRouteGPX(route)}
+                            title="Export GPX"
+                            className="h-7 w-7 p-0"
+                          >
+                            <Download size={12} />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="icon-sm"
+                            onClick={() => removeRoute(route.id)}
+                            title="Hapus Route"
+                            className="h-7 w-7 p-0"
+                          >
+                            <Trash2 size={12} />
+                          </Button>
+                        </div>
                       </div>
                     ))
                   )}
                 </div>
               </SidebarGroup>
             </TabsContent>
-            
+
             <TabsContent value="track" className="flex-1 overflow-hidden outline-none">
               <SidebarGroup className="p-0 h-full flex flex-col">
                 {tracks.length > 0 && (
@@ -176,9 +241,36 @@ const SidebarMap = () => {
                     <p className="text-sm text-muted-foreground text-center py-4">No tracks match your filter</p>
                   ) : (
                     filteredTracks.map((track, i) => (
-                      <div key={track.id || i} className="rounded-md border px-2.5 py-2 text-sm">
-                        <div className="font-medium">{track.name}</div>
-                        <div className="text-xs text-muted-foreground">{track.segments.length} segments</div>
+                      <div
+                        key={track.id || i}
+                        className="group flex items-center justify-between rounded-md border px-2.5 py-2 text-xs hover:bg-secondary transition-colors"
+                      >
+                        <div className="flex-1 min-w-0 pr-2">
+                          <div className="font-medium truncate">{track.name}</div>
+                          <div className="text-muted-foreground text-[11px]">
+                            {track.segments.length} segment(s)
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            onClick={() => exportTrackGPX(track)}
+                            title="Export GPX"
+                            className="h-7 w-7 p-0"
+                          >
+                            <Download size={12} />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="icon-sm"
+                            onClick={() => removeTrack(track.id)}
+                            title="Hapus Track"
+                            className="h-7 w-7 p-0"
+                          >
+                            <Trash2 size={12} />
+                          </Button>
+                        </div>
                       </div>
                     ))
                   )}

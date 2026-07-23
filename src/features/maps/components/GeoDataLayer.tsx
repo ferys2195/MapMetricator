@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useGeoStore } from "@/stores/useGeoStore";
 import { Marker, Polyline, Tooltip, Popup, LayerGroup } from "react-leaflet";
-import { Copy } from "lucide-react";
+import { Copy, Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { latLngToUtm, getLatitudeBand } from "@/lib/geoUtils";
+import { exportWaypointGPX, exportRouteGPX, exportTrackGPX } from "@/lib/gpxExporter";
 import * as turf from "@turf/turf";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -58,7 +59,7 @@ const getLineDetails = (points: [number, number][]) => {
 };
 
 export default function GeoDataLayer() {
-  const { waypoints, routes, tracks } = useGeoStore();
+  const { waypoints, routes, tracks, removeWaypoint, removeRoute, removeTrack } = useGeoStore();
   const [selectedItem, setSelectedItem] = useState<{ id: string; type: 'track' | 'route'; segmentIdx?: number } | null>(null);
 
   const handleCopy = (text: string, label: string) => {
@@ -115,6 +116,25 @@ export default function GeoDataLayer() {
                     </div>
                   </div>
 
+                  {/* Actions section */}
+                  <div className="flex items-center gap-2 mt-1 pt-2 border-t justify-end">
+                    <button
+                      onClick={() => exportWaypointGPX(wpt)}
+                      className="flex items-center gap-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded transition-colors cursor-pointer"
+                    >
+                      <Download size={12} /> GPX
+                    </button>
+                    <button
+                      onClick={() => {
+                        removeWaypoint(idx);
+                        toast.success(`${wpt.name} berhasil dihapus`);
+                      }}
+                      className="flex items-center gap-1 text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={12} /> Hapus
+                    </button>
+                  </div>
+
                 </div>
               </div>
             </Popup>
@@ -151,13 +171,30 @@ export default function GeoDataLayer() {
             >
               <Tooltip direction="center" sticky>{route.name}</Tooltip>
               <Popup>
-                <div className="font-sans text-sm">
+                <div className="font-sans text-sm min-w-[200px]">
                   <div className="font-bold mb-1">{route.name}</div>
                   {details && (
-                    <div className="font-bold mt-1">
-                      Total: {details.totalMeters >= 1000 ? (details.totalMeters/1000).toFixed(2) + 'km' : details.totalMeters.toFixed(2) + 'm'}
+                    <div className="font-bold mt-1 text-xs text-slate-600">
+                      Total: {details.totalMeters >= 1000 ? (details.totalMeters/1000).toFixed(2) + ' km' : details.totalMeters.toFixed(2) + ' m'}
                     </div>
                   )}
+                  <div className="flex items-center gap-2 mt-3 pt-2 border-t justify-end">
+                    <button
+                      onClick={() => exportRouteGPX(route)}
+                      className="flex items-center gap-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded transition-colors cursor-pointer"
+                    >
+                      <Download size={12} /> GPX
+                    </button>
+                    <button
+                      onClick={() => {
+                        removeRoute(route.id);
+                        toast.success(`${route.name} berhasil dihapus`);
+                      }}
+                      className="flex items-center gap-1 text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={12} /> Hapus
+                    </button>
+                  </div>
                 </div>
               </Popup>
             </Polyline>
@@ -198,13 +235,30 @@ export default function GeoDataLayer() {
                   {track.name} {track.segments.length > 1 ? `- Segmen ${segIdx + 1}` : ''}
                 </Tooltip>
                 <Popup>
-                  <div className="font-sans text-sm">
+                  <div className="font-sans text-sm min-w-[200px]">
                     <div className="font-bold mb-1">{track.name} {track.segments.length > 1 ? `- Segmen ${segIdx + 1}` : ''}</div>
                     {details && (
-                      <div className="font-bold mt-1">
-                        Total: {details.totalMeters >= 1000 ? (details.totalMeters/1000).toFixed(2) + 'km' : details.totalMeters.toFixed(2) + 'm'}
+                      <div className="font-bold mt-1 text-xs text-slate-600">
+                        Total: {details.totalMeters >= 1000 ? (details.totalMeters/1000).toFixed(2) + ' km' : details.totalMeters.toFixed(2) + ' m'}
                       </div>
                     )}
+                    <div className="flex items-center gap-2 mt-3 pt-2 border-t justify-end">
+                      <button
+                        onClick={() => exportTrackGPX(track)}
+                        className="flex items-center gap-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded transition-colors cursor-pointer"
+                      >
+                        <Download size={12} /> GPX
+                      </button>
+                      <button
+                        onClick={() => {
+                          removeTrack(track.id);
+                          toast.success(`${track.name} berhasil dihapus`);
+                        }}
+                        className="flex items-center gap-1 text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded transition-colors cursor-pointer"
+                      >
+                        <Trash2 size={12} /> Hapus
+                      </button>
+                    </div>
                   </div>
                 </Popup>
               </Polyline>
